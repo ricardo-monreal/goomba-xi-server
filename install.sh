@@ -35,7 +35,7 @@ else
 fi
 
 if [[ "$role" == files ]]; then
-  exec "$DIR/tools/setup-file-server.sh" "$@"
+  exec bash "$DIR/tools/setup-file-server.sh" "$@"
 else
-  exec "$DIR/bin/goomba" install "$@"
+  exec bash "$DIR/bin/goomba" install "$@"
 fi

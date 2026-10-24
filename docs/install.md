@@ -41,8 +41,10 @@ Install Ubuntu Server with the defaults, plus:
 After the first boot, log in and install the guest agent so Proxmox shows the address and can shut the VM down cleanly:
 
 ```bash
-sudo apt update && sudo apt install -y qemu-guest-agent && sudo systemctl enable --now qemu-guest-agent
+sudo apt update && sudo apt install -y qemu-guest-agent
 ```
+
+It starts by itself once the VM has the agent's channel: make sure **Options → QEMU Guest Agent** is *Enabled* in Proxmox, then do a full **Shutdown** and **Start** from Proxmox (a reboot inside Ubuntu keeps the old virtual hardware). Until then `apt` prints "A dependency job for qemu-guest-agent.service failed", which is harmless. Check with `systemctl status qemu-guest-agent`.
 
 ## Part 2: Install the game server
 
