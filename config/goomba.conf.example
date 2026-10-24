@@ -1,0 +1,74 @@
+# Goomba XI server configuration.
+#
+# `sudo goomba install` copies this file to /etc/goomba/goomba.conf the first
+# time it runs (asking for the addresses below). Edit that copy, not this one.
+# Database passwords are not set here; the installer generates them and keeps
+# them in /etc/goomba/*.env.
+
+# Address game clients connect to after login (written into zone_settings), and
+# the website's address when GOOMBA_DOMAIN is empty. Empty = this server's main
+# LAN address. On a VPS or when players come from the internet, set it to the
+# public IP (and forward the game ports to this machine).
+# Change it later with: sudo goomba zone-ip <address>
+GOOMBA_ZONE_IP=""
+
+# Separate file server (the Debian 13 LXC) that hosts the game client, launcher
+# installers, addons, HD packs and item icons (see docs/file-server.md).
+GOOMBA_FILES_URL="http://192.168.1.51"
+
+# Public hostname of the website, e.g. "goomba-xi.com". Leave empty on a home
+# network: the website is then served on http://<GOOMBA_ZONE_IP>.
+GOOMBA_DOMAIN=""
+
+# E-mail address Let's Encrypt sends certificate notices to. With a domain and
+# this set, the website gets HTTPS. Leave empty for plain HTTP.
+GOOMBA_ACME_EMAIL=""
+
+# Where everything is installed.
+GOOMBA_ROOT="/opt/goomba"
+
+# System user the game servers and the website run as.
+GOOMBA_USER="goomba"
+
+# LandSandBoat source and the commit Goomba XI is tested against. `goomba update`
+# moves to this commit; change it to upgrade (docs/updating.md). To carry your
+# own C++ or Lua changes, fork LandSandBoat/server and point LSB_REPO at it.
+LSB_REPO="https://github.com/LandSandBoat/server"
+LSB_REF="4b49fe56707e44b966d0fdda09f141e93881c854"
+
+# Era-accuracy modules, loaded on top of the settings in settings/main.lua:
+# LandSandBoat's own (modules/era) plus goomba_era, which carries the zone level
+# caps and Mazurka reverts as zone.yaml patches (see modules/goomba_era/README.md).
+# The Lua ones switch themselves on for every expansion turned off in main.lua;
+# the SQL and data ones are listed per expansion and must match: Goomba XI turns
+# off Wings of the Goddess and everything after it.
+# Set to "" for retail (current) behaviour. After changing it run:
+#   sudo goomba apply && sudo goomba db-update && sudo goomba restart game
+GOOMBA_ERA_MODULES="era/sql/wotg era/sql/abyssea era/sql/soa era/sql/rov era/data era/data/abyssea/advanced_job_quest era/lua goomba_era/data/abyssea_cop_level_caps goomba_era/data/abyssea_mazurka"
+
+# Optional Git mirror (tools/git-mirror.sh on the file server), e.g. "http://192.168.1.51/git".
+# When set, every https://github.com/... clone and fetch on this machine
+# (LandSandBoat, its submodules, the website, and the libraries LandSandBoat
+# downloads while building) goes to the mirror instead, so installs, updates and
+# builds work without GitHub. Empty = use GitHub.
+GIT_MIRROR=""
+
+# Website repository and branch.
+WEB_REPO="https://github.com/ricardo-monreal/goomba-xi-web"
+WEB_REF="main"
+
+# Databases.
+DB_NAME="xidb"
+WEB_DB_NAME="goomba_web"
+
+# Port the website (Next.js) listens on behind nginx.
+WEB_PORT="3000"
+
+# Nightly database backups (04:30): how many days to keep.
+BACKUP_KEEP_DAYS="14"
+
+# Optional off-box copy of every backup, over SSH with rsync, e.g.
+# "goomba-backup@192.168.1.51:." (the file server LXC; tools/setup-file-server.sh
+# prints the exact value).
+# Run `sudo goomba backup-key` for the one-time setup.
+BACKUP_REMOTE=""

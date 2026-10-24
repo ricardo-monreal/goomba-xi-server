@@ -1,0 +1,807 @@
+#!/usr/bin/env bash
+# Goomba XI server management.
+#
+#   sudo bin/goomba install        First-time setup of a fresh Ubuntu 26.04 server (asks 3 questions)
+#   sudo bin/goomba update         Move to LSB_REF, rebuild, update the database, restart
+#   sudo bin/goomba web-update     Pull, build and restart the website
+#        bin/goomba status         Service status and players online
+#   sudo bin/goomba start|stop|restart [game|web|all]
+#        bin/goomba logs [world|connect|search|map|profile|web]
+#   sudo bin/goomba backup         Dump both databases now (and copy them to BACKUP_REMOTE)
+#   sudo bin/goomba restore <file> Load a backup made by "goomba backup" (stops the game first)
+#   sudo bin/goomba apply          Re-copy this repo's settings and modules into the server
+#   sudo bin/goomba build          Rebuild the game servers only
+#   sudo bin/goomba db-update      Apply new SQL and migrations (dbtool update)
+#   sudo bin/goomba gm <account> <level>   Give every character on an account a GM level (0-5)
+#   sudo bin/goomba zone-ip [address|auto]  Show or set the address game clients connect to
+#   sudo bin/goomba backup-key     Show the SSH key to authorize on the backup machine
+#        bin/goomba version        Goomba XI, LandSandBoat and website versions
+#
+# Configuration: /etc/goomba/goomba.conf (from config/goomba.conf.example).
+
+set -Eeuo pipefail
+
+REPO_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+ETC_DIR="/etc/goomba"
+CONF="$ETC_DIR/goomba.conf"
+SERVER_ENV="$ETC_DIR/server.env"
+WEB_ENV="$ETC_DIR/web.env"
+BACKUP_KEY="$ETC_DIR/backup_ed25519"
+
+GAME_UNITS=(goomba-world goomba-connect goomba-search goomba-map goomba-profile)
+WEB_UNITS=(goomba-web)
+
+# ---- helpers -------------------------------------------------------------------------------
+
+c_info=$'\e[1;36m'; c_ok=$'\e[1;32m'; c_warn=$'\e[1;33m'; c_err=$'\e[1;31m'; c_off=$'\e[0m'
+[[ -t 1 ]] || { c_info=''; c_ok=''; c_warn=''; c_err=''; c_off=''; }
+step() { printf '%s==>%s %s\n' "$c_info" "$c_off" "$*"; }
+ok()   { printf '%s ok%s %s\n' "$c_ok" "$c_off" "$*"; }
+warn() { printf '%swarning:%s %s\n' "$c_warn" "$c_off" "$*" >&2; }
+die()  { printf '%serror:%s %s\n' "$c_err" "$c_off" "$*" >&2; exit 1; }
+trap 'die "command failed (line $LINENO): $BASH_COMMAND"' ERR
+
+need_root() { [[ $EUID -eq 0 ]] || die "run this with sudo: sudo goomba $*"; }
+
+load_conf() {
+  if [[ -f "$CONF" ]]; then
+    # shellcheck source=/dev/null
+    source "$CONF"
+  else
+    # shellcheck source=/dev/null
+    source "$REPO_DIR/config/goomba.conf.example"
+  fi
+  SERVER_DIR="$GOOMBA_ROOT/server"
+  BUILD_DIR="$GOOMBA_ROOT/build"
+  VENV="$GOOMBA_ROOT/venv"
+  WEB_DIR="$GOOMBA_ROOT/web"
+  BACKUP_DIR="$GOOMBA_ROOT/backups"
+}
+
+# Run a command as the service user.
+as_user() { sudo -u "$GOOMBA_USER" -H "$@"; }
+
+# Read one KEY=value from an env file.
+env_get() { grep -E "^$2=" "$1" | head -1 | cut -d= -f2-; }
+
+# Set KEY="value" in goomba.conf, adding the line when it isn't there.
+conf_set() {
+  local key="$1" value="$2"
+  if grep -q "^$key=" "$CONF"; then
+    sed -i "s#^$key=.*#$key=\"$value\"#" "$CONF"
+  else
+    printf '%s="%s"\n' "$key" "$value" >> "$CONF"
+  fi
+}
+
+random_secret() { openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c "${1:-32}"; }
+
+mysql_root() { mysql --protocol=socket -uroot "$@"; }
+
+# This server's main LAN address.
+detect_ip() { ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -1; }
+valid_ipv4() { [[ "$1" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]] && ((BASH_REMATCH[1] < 256 && BASH_REMATCH[2] < 256 && BASH_REMATCH[3] < 256 && BASH_REMATCH[4] < 256)); }
+
+# The address players use for the website: the domain when one is set, otherwise the zone IP
+# (this machine's LAN address unless goomba.conf says otherwise).
+public_host() { if [[ -n "${GOOMBA_DOMAIN:-}" ]]; then echo "$GOOMBA_DOMAIN"; else echo "${GOOMBA_ZONE_IP:-$(detect_ip)}"; fi; }
+site_url() {
+  if [[ -n "${GOOMBA_DOMAIN:-}" && -n "${GOOMBA_ACME_EMAIL:-}" ]]; then echo "https://$GOOMBA_DOMAIN"; else echo "http://$(public_host)"; fi
+}
+
+# ---- install steps -------------------------------------------------------------------------
+
+check_os() {
+  # shellcheck source=/dev/null
+  . /etc/os-release
+  if [[ "${ID:-}" != "ubuntu" ]]; then
+    die "Goomba XI targets Ubuntu 26.04; this is ${PRETTY_NAME:-unknown}."
+  fi
+  if [[ "${VERSION_ID:-}" != "26.04" ]]; then
+    warn "Goomba XI is tested on Ubuntu 26.04; this is $PRETTY_NAME. Continuing."
+  fi
+}
+
+install_packages() {
+  step "Installing packages"
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -q
+  # Build and runtime dependencies from LandSandBoat's docker/ubuntu.Dockerfile, plus MariaDB,
+  # nginx, certbot, Node.js for the website, rsync/ssh for off-box backups and ufw.
+  apt-get install -y -q --no-install-recommends \
+    build-essential g++-15 cmake ninja-build ccache pkg-config git ca-certificates curl openssl \
+    binutils-dev libdwarf-dev libluajit-5.1-dev libmariadb-dev-compat libssl-dev \
+    libzmq3-dev zlib1g-dev libzstd-dev python3 python3-dev python3-venv \
+    luajit lua5.1 libzmq5 \
+    mariadb-server mariadb-client \
+    nginx certbot python3-certbot-nginx \
+    nodejs npm \
+    rsync openssh-client \
+    ufw sudo tzdata
+  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 100
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-15 100
+
+  local node_major
+  node_major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
+  if (( node_major < 20 )); then
+    die "The website needs Node.js 20 or newer; Ubuntu's package is $(node -v 2>/dev/null || echo missing)."
+  fi
+  ok "packages (Node.js $(node -v))"
+}
+
+# Ask one question with a default, on the terminal even when this script was piped into bash
+# (install.sh). Without a terminal (automation) the default is used, so "install" never hangs.
+ask() {
+  local prompt="$1" default="$2" answer=""
+  if [[ -z "${GOOMBA_NONINTERACTIVE:-}" ]] && { : </dev/tty; } 2>/dev/null; then
+    read -r -p "  $prompt [$default]: " answer </dev/tty >/dev/tty 2>&1 || true
+  fi
+  echo "${answer:-$default}"
+}
+
+# First run: write /etc/goomba/goomba.conf from the example, asking the few things that differ
+# between installs. Everything else has a working default for a home network.
+create_config() {
+  [[ -f "$CONF" ]] && return 0
+  step "First run: a few questions (press Enter to accept the default)"
+  install -o root -g "$GOOMBA_USER" -m 0640 "$REPO_DIR/config/goomba.conf.example" "$CONF"
+  local ip files_guess files domain email=""
+  ip="$(detect_ip)"
+  ip="$(ask "Address players connect to (this server's LAN IP)" "${ip:-127.0.0.1}")"
+  valid_ipv4 "$ip" || die "'$ip' is not an IPv4 address"
+  # A guess for the file server LXC: the next address up. The question shows it, so it's easy to fix.
+  files_guess="http://${ip%.*}.$(( (${ip##*.} % 254) + 1 ))"
+  files="$(ask "File server URL (the Debian LXC that hosts downloads)" "$files_guess")"
+  domain="$(ask "Domain name for the website (leave empty on a home network)" "")"
+  [[ -n "$domain" ]] && email="$(ask "E-mail for a Let's Encrypt certificate (empty = plain HTTP)" "")"
+  conf_set GOOMBA_ZONE_IP "$ip"
+  conf_set GOOMBA_FILES_URL "${files%/}"
+  conf_set GOOMBA_DOMAIN "$domain"
+  conf_set GOOMBA_ACME_EMAIL "$email"
+  ok "wrote $CONF (edit it any time; the comments inside explain each setting)"
+}
+
+create_user_and_dirs() {
+  step "Creating the $GOOMBA_USER user and $GOOMBA_ROOT"
+  id "$GOOMBA_USER" &>/dev/null || adduser --system --group --home "$GOOMBA_ROOT" --shell /usr/sbin/nologin "$GOOMBA_USER"
+  install -d -o "$GOOMBA_USER" -g "$GOOMBA_USER" -m 0750 "$GOOMBA_ROOT" "$BACKUP_DIR"
+  install -d -o root -g "$GOOMBA_USER" -m 0750 "$ETC_DIR"
+  create_config
+  ok "user and folders"
+}
+
+write_secrets() {
+  step "Database accounts and secrets"
+  if [[ ! -f "$SERVER_ENV" ]]; then
+    umask 077
+    cat > "$SERVER_ENV" <<EOF
+# Read by the game servers (LandSandBoat overrides settings from XI_<FILE>_<KEY> variables)
+# and by dbtool. Generated by bin/goomba install.
+XI_NETWORK_SQL_LOGIN=goomba_game
+XI_NETWORK_SQL_PASSWORD=$(random_secret 32)
+XI_NETWORK_SQL_DATABASE=$DB_NAME
+EOF
+    chown root:"$GOOMBA_USER" "$SERVER_ENV"; chmod 0640 "$SERVER_ENV"
+  fi
+  if [[ ! -f "$WEB_ENV" ]]; then
+    umask 077
+    cat > "$WEB_ENV" <<EOF
+# Read by the website (goomba-web.service). Generated by bin/goomba install.
+NODE_ENV=production
+PORT=$WEB_PORT
+SITE_URL=$(site_url)
+FILES_URL=$GOOMBA_FILES_URL
+GAME_DB_HOST=127.0.0.1
+GAME_DB_NAME=$DB_NAME
+GAME_DB_USER=goomba_web
+GAME_DB_PASSWORD=$(random_secret 32)
+WEB_DB_NAME=$WEB_DB_NAME
+SESSION_SECRET=$(random_secret 64)
+GAME_HTTP_API=http://127.0.0.1:8088
+# Optional: outgoing mail for account e-mails (password resets). Leave empty to log
+# reset links to the journal instead (goomba logs web).
+SMTP_URL=
+MAIL_FROM="Goomba XI <no-reply@$(public_host)>"
+# Optional: Discord invite shown on the site.
+DISCORD_URL=
+EOF
+    chown root:"$GOOMBA_USER" "$WEB_ENV"; chmod 0640 "$WEB_ENV"
+  fi
+  ok "$SERVER_ENV and $WEB_ENV"
+}
+
+# SITE_URL and FILES_URL follow goomba.conf, so changing the domain, zone IP or file server
+# there and running "goomba web-update" keeps the website's links right.
+sync_site_url() {
+  [[ -f "$WEB_ENV" ]] || return 0
+  local want; want="$(site_url)"
+  if [[ "$(env_get "$WEB_ENV" SITE_URL)" != "$want" ]]; then
+    sed -i "s#^SITE_URL=.*#SITE_URL=$want#" "$WEB_ENV"
+    ok "website address is now $want"
+  fi
+  if [[ "$(env_get "$WEB_ENV" FILES_URL)" != "$GOOMBA_FILES_URL" ]]; then
+    sed -i "s#^FILES_URL=.*#FILES_URL=$GOOMBA_FILES_URL#" "$WEB_ENV"
+    ok "file server is now $GOOMBA_FILES_URL"
+  fi
+}
+
+setup_mariadb() {
+  step "MariaDB"
+  systemctl enable --now mariadb
+  local game_pw web_pw
+  game_pw="$(env_get "$SERVER_ENV" XI_NETWORK_SQL_PASSWORD)"
+  web_pw="$(env_get "$WEB_ENV" GAME_DB_PASSWORD)"
+  # Ubuntu's MariaDB lets root in through the unix socket only, which is what we want.
+  mysql_root <<SQL
+CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE DATABASE IF NOT EXISTS \`$WEB_DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE USER IF NOT EXISTS 'goomba_game'@'localhost' IDENTIFIED BY '$game_pw';
+CREATE USER IF NOT EXISTS 'goomba_game'@'127.0.0.1' IDENTIFIED BY '$game_pw';
+ALTER USER 'goomba_game'@'localhost' IDENTIFIED BY '$game_pw';
+ALTER USER 'goomba_game'@'127.0.0.1' IDENTIFIED BY '$game_pw';
+GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO 'goomba_game'@'localhost', 'goomba_game'@'127.0.0.1';
+CREATE USER IF NOT EXISTS 'goomba_web'@'localhost' IDENTIFIED BY '$web_pw';
+CREATE USER IF NOT EXISTS 'goomba_web'@'127.0.0.1' IDENTIFIED BY '$web_pw';
+ALTER USER 'goomba_web'@'localhost' IDENTIFIED BY '$web_pw';
+ALTER USER 'goomba_web'@'127.0.0.1' IDENTIFIED BY '$web_pw';
+GRANT ALL PRIVILEGES ON \`$WEB_DB_NAME\`.* TO 'goomba_web'@'localhost', 'goomba_web'@'127.0.0.1';
+FLUSH PRIVILEGES;
+SQL
+  # Bind to localhost only: nothing outside this machine needs the database.
+  cat > /etc/mysql/mariadb.conf.d/90-goomba.cnf <<'EOF'
+[mysqld]
+bind-address = 127.0.0.1
+character-set-server = utf8mb4
+collation-server = utf8mb4_general_ci
+EOF
+  systemctl restart mariadb
+  ok "databases $DB_NAME and $WEB_DB_NAME"
+}
+
+# Launch tokens: the website writes them, xi_connect consumes them
+# (patches/0001-launch-token-login.patch). The table also ships in modules/goomba/sql for dbtool;
+# this makes sure it exists before the website is granted access to it.
+ensure_launch_tokens() {
+  mysql_root "$DB_NAME" < "$REPO_DIR/modules/goomba/sql/accounts_login_tokens.sql"
+}
+
+# The website reads game data and writes only accounts and launch tokens.
+grant_web_access() {
+  local tables
+  tables="$(mysql_root -N -e "SELECT table_name FROM information_schema.tables WHERE table_schema='$DB_NAME'")"
+  [[ -n "$tables" ]] || return 0
+  mysql_root -e "GRANT SELECT ON \`$DB_NAME\`.* TO 'goomba_web'@'localhost', 'goomba_web'@'127.0.0.1';"
+  local t
+  for t in accounts accounts_login_tokens accounts_banned; do
+    if grep -qx "$t" <<<"$tables"; then
+      mysql_root -e "GRANT INSERT, UPDATE, DELETE ON \`$DB_NAME\`.\`$t\` TO 'goomba_web'@'localhost', 'goomba_web'@'127.0.0.1';"
+    fi
+  done
+  mysql_root -e "FLUSH PRIVILEGES;"
+}
+
+# GIT_MIRROR redirects every https://github.com/ URL, system-wide, to the mirror. Clearing the
+# setting removes the redirect again.
+configure_git_mirror() {
+  local key
+  while read -r key; do
+    [[ -n "$key" ]] && git config --system --unset-all "$key" || true
+  done < <(git config --system --name-only --get-regexp '^url\..*\.insteadof$' '^https://github.com/$' 2>/dev/null || true)
+  if [[ -n "${GIT_MIRROR:-}" ]]; then
+    git config --system --add "url.${GIT_MIRROR%/}/github.com/.insteadOf" "https://github.com/"
+    ok "GitHub URLs go to ${GIT_MIRROR%/}/github.com/"
+  fi
+}
+
+lsb_git() { as_user git -c safe.directory='*' -C "$SERVER_DIR" "$@"; }
+
+fetch_source() {
+  step "LandSandBoat server source ($LSB_REF)"
+  configure_git_mirror
+  if [[ ! -d "$SERVER_DIR/.git" ]]; then
+    as_user git clone --filter=blob:none "$LSB_REPO" "$SERVER_DIR"
+  fi
+  lsb_git remote set-url origin "$LSB_REPO"
+  lsb_git fetch --tags origin
+  # Throw away earlier patches and edits to tracked files, then move to the pinned commit.
+  lsb_git checkout --force --detach "$LSB_REF"
+  lsb_git submodule update --init --recursive
+  ok "server source at $(lsb_git rev-parse --short HEAD)"
+}
+
+apply_overlay() {
+  step "Applying Goomba XI settings and modules"
+  local f
+  for f in "$REPO_DIR"/settings/*.lua; do
+    install -o "$GOOMBA_USER" -g "$GOOMBA_USER" -m 0644 "$f" "$SERVER_DIR/settings/$(basename "$f")"
+  done
+  # Our own modules (this repo's modules/goomba and modules/goomba_era) are copied in whole.
+  # LandSandBoat's modules/init.txt is rebuilt from the copy LandSandBoat ships (so updates bring
+  # its changes) plus one block: the era-accuracy modules listed in GOOMBA_ERA_MODULES, then
+  # "goomba", so our overrides load last.
+  local dir name
+  for dir in "$REPO_DIR"/modules/*/; do
+    name="$(basename "$dir")"
+    rm -rf "${SERVER_DIR:?}/modules/$name"
+    cp -r "$dir" "$SERVER_DIR/modules/$name"
+    chown -R "$GOOMBA_USER:$GOOMBA_USER" "$SERVER_DIR/modules/$name"
+  done
+  local init="$SERVER_DIR/modules/init.txt" entry
+  lsb_git checkout -- modules/init.txt modules/era 2>/dev/null || true
+  # LandSandBoat moved zone settings (level caps, Mazurka, ...) from the zone_settings table to
+  # data/zones/*/zone.yaml, but a few era SQL files still update the old columns and stop dbtool.
+  # While the columns are gone, drop those statements; modules/goomba_era/data applies the same
+  # changes as zone.yaml patches. Undone by the checkout above on every run.
+  if ! grep -q 'restriction' "$SERVER_DIR/sql/zone_settings.sql" 2>/dev/null; then
+    local f
+    while IFS= read -r -d '' f; do
+      if grep -qi 'zone_settings' "$f"; then
+        as_user perl -0pi -e 's/^[ \t]*UPDATE[ \t]+`?zone_settings`?\s+SET\s+(?:restriction|misc)\b.*?;[ \t]*\n//gims' "$f"
+      fi
+    done < <(find "$SERVER_DIR/modules/era/sql" -name '*.sql' -print0 2>/dev/null)
+  fi
+  {
+    printf '\n# ---- Goomba XI (added by bin/goomba; change GOOMBA_ERA_MODULES in %s) ----\n' "$CONF"
+    for entry in ${GOOMBA_ERA_MODULES:-}; do
+      if [[ -e "$SERVER_DIR/modules/$entry" ]]; then echo "$entry"; else echo "# $entry (not in this LandSandBoat version)"; fi
+    done
+    echo "goomba"
+  } >> "$init"
+  chown "$GOOMBA_USER:$GOOMBA_USER" "$init"
+  install -d -o "$GOOMBA_USER" -g "$GOOMBA_USER" "$SERVER_DIR/log"
+  ok "settings and modules copied into $SERVER_DIR"
+}
+
+# Source changes Goomba XI makes to LandSandBoat, kept as patches in this repo's patches/ folder
+# and applied in name order on top of clean source (fetch_source resets tracked files each time).
+# Today that is only the launch-token sign-in the launcher uses. A patch that no longer applies
+# stops here, before anything is rebuilt, so the servers that are running keep working.
+apply_patches() {
+  step "Goomba XI source patches"
+  local p name
+  shopt -s nullglob
+  local patches=("$REPO_DIR"/patches/*.patch)
+  shopt -u nullglob
+  for p in "${patches[@]}"; do
+    name="$(basename "$p")"
+    # Fed on stdin: the service user may not be able to read this repository's folder.
+    if lsb_git apply --check < "$p" 2>/dev/null; then
+      lsb_git apply < "$p"
+      ok "applied $name"
+    elif lsb_git apply -R --check < "$p" 2>/dev/null; then
+      ok "$name is already applied"
+    elif lsb_git apply --3way < "$p" >/dev/null 2>&1; then
+      ok "applied $name (3-way merge)"
+    else
+      lsb_git checkout --force -- src 2>/dev/null || true
+      die "$name doesn't apply to LandSandBoat $LSB_REF. Put LSB_REF back to the commit 'goomba version' shows, or refresh the patch (docs/updating.md)."
+    fi
+  done
+  (( ${#patches[@]} )) || ok "none to apply"
+}
+
+setup_python() {
+  step "Python tools (dbtool)"
+  [[ -x "$VENV/bin/python" ]] || as_user python3 -m venv "$VENV"
+  as_user "$VENV/bin/pip" install -q --upgrade pip wheel
+  as_user "$VENV/bin/pip" install -q -r "$SERVER_DIR/tools/requirements.txt"
+  ok "venv at $VENV"
+}
+
+build_server() {
+  step "Building the game servers (this takes a while the first time)"
+  install -d -o "$GOOMBA_USER" -g "$GOOMBA_USER" "$BUILD_DIR" "$GOOMBA_ROOT/cache" "$GOOMBA_ROOT/cache/cpm"
+  # Libraries LandSandBoat's build downloads (CPM) are kept here for good, so later builds,
+  # including after "goomba update", work offline once they have been fetched.
+  local cpm_cache="$GOOMBA_ROOT/cache/cpm"
+  # Codegen runs Python scripts that need tools/requirements.txt (jinja2, jsonschema,
+  # ruamel.yaml). Those live in our venv, so point CMake (and anything it runs) at it.
+  [[ -x "$VENV/bin/python" ]] || setup_python
+  local venv_path="$VENV/bin:$PATH"
+  # About 1.5 GB of RAM per compile job: cap the jobs so a small VM doesn't run out of memory.
+  local jobs mem_jobs
+  jobs="$(nproc)"
+  mem_jobs=$(( $(awk '/MemTotal/ {print $2}' /proc/meminfo) / 1500000 ))
+  (( mem_jobs < 1 )) && mem_jobs=1
+  (( jobs > mem_jobs )) && jobs=$mem_jobs
+  as_user env PATH="$venv_path" VIRTUAL_ENV="$VENV" CC=gcc-15 CXX=g++-15 CCACHE_DIR="$GOOMBA_ROOT/.ccache" CPM_SOURCE_CACHE="$cpm_cache" \
+    cmake -G Ninja -S "$SERVER_DIR" -B "$BUILD_DIR" \
+      -DPython_EXECUTABLE="$VENV/bin/python" -DPython3_EXECUTABLE="$VENV/bin/python" \
+      -DCMAKE_BUILD_TYPE=Release -DPCH_ENABLE=ON -DTRACY_ENABLE=OFF -DWARNINGS_AS_ERRORS=FALSE
+  as_user env PATH="$venv_path" VIRTUAL_ENV="$VENV" CCACHE_DIR="$GOOMBA_ROOT/.ccache" CPM_SOURCE_CACHE="$cpm_cache" cmake --build "$BUILD_DIR" -j"$jobs"
+  local exe
+  for exe in xi_connect xi_map xi_search xi_world xi_profile; do
+    [[ -x "$SERVER_DIR/$exe" ]] || die "build finished but $SERVER_DIR/$exe is missing"
+  done
+  ok "xi_connect xi_map xi_search xi_world xi_profile ($jobs build jobs)"
+}
+
+dbtool() {
+  # dbtool reads the login from the same XI_NETWORK_* variables the servers use.
+  (
+    set -a
+    # shellcheck source=/dev/null
+    source "$SERVER_ENV"
+    set +a
+    cd "$SERVER_DIR"
+    as_user env XI_NETWORK_SQL_LOGIN="$XI_NETWORK_SQL_LOGIN" XI_NETWORK_SQL_PASSWORD="$XI_NETWORK_SQL_PASSWORD" \
+      XI_NETWORK_SQL_DATABASE="$XI_NETWORK_SQL_DATABASE" "$VENV/bin/python" tools/dbtool.py "$@"
+  )
+}
+
+setup_database() {
+  step "Game database"
+  local count
+  count="$(mysql_root -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME'")"
+  if [[ "$count" == "0" ]]; then
+    # dbtool "setup" runs CREATE DATABASE itself and stops if the database exists, so drop the
+    # empty one made by setup_mariadb. goomba_game holds ALL on this database name, which lets
+    # it create it again; the website user's database-level grant survives the drop.
+    mysql_root -e "DROP DATABASE IF EXISTS \`$DB_NAME\`"
+    dbtool setup "$DB_NAME"
+    count="$(mysql_root -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME'")"
+    [[ "$count" != "0" ]] || die "dbtool setup did not create any tables"
+  else
+    dbtool update
+  fi
+  ensure_launch_tokens
+  grant_web_access
+  apply_zone_ip
+  ok "$DB_NAME ($count tables)"
+}
+
+# The address the login and map servers hand to game clients (zone_settings.zoneip). It ships
+# as 127.0.0.1, which only works for a client on this machine, and dbtool update can reset it,
+# so it is re-applied after every database step. GOOMBA_ZONE_IP in goomba.conf, or this
+# server's main LAN address when unset.
+apply_zone_ip() {
+  local ip="${GOOMBA_ZONE_IP:-}"
+  [[ -n "$ip" ]] || ip="$(detect_ip)"
+  valid_ipv4 "$ip" || { warn "could not work out the zone IP; set it with: sudo goomba zone-ip <address>"; return 0; }
+  # Rows with an empty zoneip are disabled zones; leave them disabled.
+  mysql_root "$DB_NAME" -e "UPDATE zone_settings SET zoneip = '$ip' WHERE zoneip <> ''"
+  ok "zone IP $ip${GOOMBA_ZONE_IP:+ (from goomba.conf)}"
+}
+
+cmd_zone_ip() {
+  need_root zone-ip
+  load_conf
+  local ip="${1:-}"
+  if [[ -z "$ip" ]]; then
+    echo "  configured: ${GOOMBA_ZONE_IP:-(auto: $(detect_ip))}"
+    echo "  in use:     $(mysql_root -N "$DB_NAME" -e "SELECT GROUP_CONCAT(DISTINCT zoneip) FROM zone_settings WHERE zoneip <> ''")"
+    echo "  change it:  sudo goomba zone-ip <address>   (or 'auto')"
+    return 0
+  fi
+  if [[ "$ip" == auto ]]; then
+    conf_set GOOMBA_ZONE_IP ""
+    GOOMBA_ZONE_IP=""
+  else
+    valid_ipv4 "$ip" || die "'$ip' is not an IPv4 address"
+    conf_set GOOMBA_ZONE_IP "$ip"
+    GOOMBA_ZONE_IP="$ip"
+  fi
+  apply_zone_ip
+  systemctl reset-failed "${GAME_UNITS[@]}" 2>/dev/null || true
+  systemctl restart goomba-game.target
+  ok "game servers restarted"
+  if [[ -z "${GOOMBA_DOMAIN:-}" ]]; then
+    # Without a domain the website lives at the same address, so its links move too.
+    sync_site_url
+    systemctl restart goomba-web.service
+    warn "the website moved to $(site_url): rebuild the launcher with the new address (launcher README, step 1)"
+  fi
+}
+
+install_units() {
+  step "systemd services"
+  local unit
+  for unit in "$REPO_DIR"/systemd/*.service "$REPO_DIR"/systemd/*.target "$REPO_DIR"/systemd/*.timer; do
+    [[ -e "$unit" ]] || continue
+    sed -e "s#@ROOT@#$GOOMBA_ROOT#g" -e "s#@USER@#$GOOMBA_USER#g" -e "s#@REPO@#$REPO_DIR#g" \
+      "$unit" > "/etc/systemd/system/$(basename "$unit")"
+  done
+  systemctl daemon-reload
+  systemctl enable goomba-game.target goomba-backup.timer
+  ok "goomba-game.target, goomba-web.service, goomba-backup.timer"
+}
+
+setup_firewall() {
+  step "Firewall"
+  ufw allow OpenSSH >/dev/null
+  ufw allow 'Nginx Full' >/dev/null
+  # FFXI: login data/view/auth, search, profile and the map server (UDP).
+  ufw allow 54230/tcp >/dev/null
+  ufw allow 54230/udp >/dev/null
+  ufw allow 54231/tcp >/dev/null
+  ufw allow 54001/tcp >/dev/null
+  ufw allow 54002/tcp >/dev/null
+  ufw allow 51220/tcp >/dev/null
+  ufw allow 51240/tcp >/dev/null
+  ufw --force enable >/dev/null
+  ok "ufw: ssh, http/https, 54001, 54002, 54230 tcp+udp, 54231, 51220, 51240"
+}
+
+setup_nginx() {
+  step "nginx for $(public_host)"
+  # With a domain: a name-based site (and HTTPS through certbot when GOOMBA_ACME_EMAIL is set).
+  # Without one (home network): the default site, answering on any address, so http://<LAN IP> works.
+  local names listen_opts=""
+  if [[ -n "${GOOMBA_DOMAIN:-}" ]]; then
+    names="$GOOMBA_DOMAIN www.$GOOMBA_DOMAIN"
+  else
+    names="_"; listen_opts=" default_server"
+  fi
+  # Keep the HTTPS block certbot added earlier: only rewrite the file when there isn't one.
+  if ! grep -q 'managed by Certbot' /etc/nginx/sites-available/goomba-web.conf 2>/dev/null || [[ -z "${GOOMBA_DOMAIN:-}" ]]; then
+    sed -e "s#@SERVER_NAMES@#$names#g" -e "s#@LISTEN_OPTS@#$listen_opts#g" -e "s#@WEB_PORT@#$WEB_PORT#g" \
+      "$REPO_DIR/nginx/goomba-web.conf" > /etc/nginx/sites-available/goomba-web.conf
+    # Without IPv6 on this machine nginx can't open the [::]:80 socket.
+    [[ -e /proc/net/if_inet6 ]] || sed -i '/listen \[::\]/d' /etc/nginx/sites-available/goomba-web.conf
+  fi
+  ln -sf /etc/nginx/sites-available/goomba-web.conf /etc/nginx/sites-enabled/goomba-web.conf
+  rm -f /etc/nginx/sites-enabled/default
+  nginx -t
+  systemctl reload nginx
+  if [[ -n "${GOOMBA_DOMAIN:-}" && -n "${GOOMBA_ACME_EMAIL:-}" ]]; then
+    certbot --nginx --non-interactive --agree-tos --redirect --keep-until-expiring -m "$GOOMBA_ACME_EMAIL" \
+      -d "$GOOMBA_DOMAIN" -d "www.$GOOMBA_DOMAIN" || warn "certbot failed; check that DNS for $GOOMBA_DOMAIN points here, then run: sudo certbot --nginx"
+  fi
+  ok "nginx ($(site_url))"
+}
+
+web_deploy() {
+  step "Website ($WEB_REF)"
+  configure_git_mirror
+  sync_site_url
+  if [[ ! -d "$WEB_DIR/.git" ]]; then
+    as_user git clone "$WEB_REPO" "$WEB_DIR"
+  fi
+  as_user git -C "$WEB_DIR" remote set-url origin "$WEB_REPO"
+  as_user git -C "$WEB_DIR" fetch origin
+  as_user git -C "$WEB_DIR" checkout --force "$WEB_REF"
+  as_user git -C "$WEB_DIR" reset --hard "origin/$WEB_REF"
+  # Build with the same env file the service uses, so SITE_URL etc. are baked in correctly.
+  # --include=dev: NODE_ENV=production would otherwise skip the build tools. LSB_DIR lets the
+  # build regenerate its game tables (experience, item stat names, ferries) from this server.
+  # shellcheck disable=SC2016  # expanded by the inner shell
+  as_user bash -c 'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"
+    export LSB_DIR="$3"
+    npm ci --include=dev --no-audit --no-fund
+    npm run build
+    npm run migrate' _ "$WEB_ENV" "$WEB_DIR" "$SERVER_DIR"
+  systemctl enable goomba-web.service
+  systemctl restart goomba-web.service
+  ok "website running on 127.0.0.1:$WEB_PORT"
+}
+
+# ---- backups -------------------------------------------------------------------------------
+
+ensure_backup_key() {
+  [[ -f "$BACKUP_KEY" ]] && return 0
+  ssh-keygen -q -t ed25519 -N '' -C "goomba-backup@$(hostname)" -f "$BACKUP_KEY"
+  chmod 0600 "$BACKUP_KEY"
+}
+
+cmd_backup_key() {
+  need_root backup-key
+  load_conf
+  ensure_backup_key
+  echo "Authorize this key for the backup user on the file server. On the Debian LXC run:"
+  echo
+  echo "  sudo /opt/goomba-xi-server/tools/setup-file-server.sh --backup-key '$(cat "$BACKUP_KEY.pub")'"
+  echo
+  echo "then set BACKUP_REMOTE in $CONF to what that command prints (goomba-backup@<file server>:.)"
+  echo "and test with: sudo goomba backup"
+}
+
+# Copy the backup folder to BACKUP_REMOTE (user@host:/path) with rsync over SSH. Files pruned
+# here are pruned there too, so the remote copy mirrors the local one.
+backup_offsite() {
+  [[ -n "${BACKUP_REMOTE:-}" ]] || return 0
+  ensure_backup_key
+  if rsync -a --delete --exclude='.ssh/' --chmod=F640 -e "ssh -i $BACKUP_KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
+      "$BACKUP_DIR/" "$BACKUP_REMOTE/"; then
+    ok "copied to $BACKUP_REMOTE"
+  else
+    warn "could not copy backups to $BACKUP_REMOTE (is the key from 'sudo goomba backup-key' authorized there?)"
+  fi
+}
+
+cmd_backup_inner() {
+  local stamp file db
+  stamp="$(date +%Y%m%d-%H%M%S)"
+  install -d -o "$GOOMBA_USER" -g "$GOOMBA_USER" -m 0750 "$BACKUP_DIR"
+  for db in "$DB_NAME" "$WEB_DB_NAME"; do
+    file="$BACKUP_DIR/$db-$stamp.sql.gz"
+    mysqldump --protocol=socket -uroot --single-transaction --routines --triggers "$db" | gzip -6 > "$file"
+    chown "$GOOMBA_USER:$GOOMBA_USER" "$file"; chmod 0640 "$file"
+    ok "$file"
+  done
+  # A copy of the settings and secrets next to the dumps: a restore onto a new machine keeps
+  # everyone signed in (same SESSION_SECRET) and starts from the old goomba.conf.
+  file="$BACKUP_DIR/etc-goomba-$stamp.tar.gz"
+  (umask 077; tar -czf "$file" --exclude='etc/goomba/backup_ed25519*' -C / etc/goomba) && ok "$file"
+  find "$BACKUP_DIR" \( -name '*.sql.gz' -o -name 'etc-goomba-*.tar.gz' \) -mtime "+${BACKUP_KEEP_DAYS:-14}" -delete
+  backup_offsite
+}
+
+cmd_backup() { need_root backup; load_conf; step "Backing up databases"; cmd_backup_inner; }
+
+cmd_restore() {
+  need_root restore
+  load_conf
+  local file="${1:-}"
+  if [[ -z "$file" ]]; then
+    echo "usage: sudo goomba restore <backup file>"
+    echo
+    echo "Recent backups in $BACKUP_DIR:"
+    find "$BACKUP_DIR" -maxdepth 1 -name '*.sql.gz' -printf '%T@ %f\n' 2>/dev/null | sort -rn | head -10 | sed 's/^[0-9.]* /  /'
+    return 0
+  fi
+  [[ -f "$file" ]] || file="$BACKUP_DIR/$file"
+  [[ -f "$file" ]] || die "no such backup: $1"
+  local base db
+  base="$(basename "$file")"
+  case "$base" in
+    "$WEB_DB_NAME"-*) db="$WEB_DB_NAME" ;;
+    "$DB_NAME"-*) db="$DB_NAME" ;;
+    *) die "can't tell which database $base belongs to (expected $DB_NAME-… or $WEB_DB_NAME-…)" ;;
+  esac
+  if [[ -t 0 ]]; then
+    local yn
+    read -r -p "Replace the $db database with $base? Everything since that backup is lost. [y/N] " yn
+    [[ "$yn" == [yY]* ]] || die "cancelled"
+  fi
+  step "Restoring $db from $base"
+  systemctl stop goomba-game.target goomba-web.service
+  cmd_backup_inner
+  mysql_root -e "DROP DATABASE IF EXISTS \`$db\`; CREATE DATABASE \`$db\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+  gunzip -c "$file" | mysql_root "$db"
+  if [[ "$db" == "$DB_NAME" ]]; then
+    ensure_launch_tokens
+    grant_web_access
+    apply_zone_ip
+  else
+    mysql_root -e "GRANT ALL PRIVILEGES ON \`$WEB_DB_NAME\`.* TO 'goomba_web'@'localhost', 'goomba_web'@'127.0.0.1'; FLUSH PRIVILEGES;"
+  fi
+  systemctl reset-failed "${GAME_UNITS[@]}" "${WEB_UNITS[@]}" 2>/dev/null || true
+  systemctl start goomba-game.target goomba-web.service
+  ok "$db restored (what was there before was backed up first, in $BACKUP_DIR)"
+}
+
+# ---- commands ------------------------------------------------------------------------------
+
+cmd_install() {
+  need_root install
+  load_conf
+  check_os
+  install_packages
+  create_user_and_dirs
+  load_conf
+  write_secrets
+  setup_mariadb
+  fetch_source
+  apply_overlay
+  apply_patches
+  setup_python
+  build_server
+  setup_database
+  install_units
+  setup_firewall
+  setup_nginx
+  systemctl start goomba-game.target
+  web_deploy
+  ensure_backup_key
+  ln -sf "$REPO_DIR/bin/goomba" /usr/local/bin/goomba
+  printf '\n%sGoomba XI is installed.%s\n' "$c_ok" "$c_off"
+  echo "  Website:      $(site_url)"
+  echo "  Game status:  goomba status"
+  echo "  Make a GM:    sudo goomba gm <account> 5   (after creating a character)"
+  echo "  Next:         the file server and the launcher (docs/install.md, parts 3 and 4)"
+}
+
+cmd_update() {
+  need_root update
+  load_conf
+  git -c safe.directory='*' -C "$REPO_DIR" pull --ff-only || warn "could not pull $REPO_DIR; using the settings already there"
+  load_conf
+  fetch_source
+  apply_overlay
+  apply_patches
+  setup_python
+  build_server
+  systemctl stop goomba-game.target
+  cmd_backup_inner
+  setup_database
+  install_units
+  systemctl reset-failed "${GAME_UNITS[@]}" 2>/dev/null || true
+  systemctl start goomba-game.target
+  ok "game servers updated and restarted"
+}
+
+units_for() {
+  case "${1:-all}" in
+    game) echo goomba-game.target ;;
+    web) echo "${WEB_UNITS[*]}" ;;
+    all) echo "goomba-game.target ${WEB_UNITS[*]}" ;;
+    *) die "unknown target '$1' (use game, web or all)" ;;
+  esac
+}
+
+cmd_status() {
+  load_conf
+  local u state failed=()
+  for u in "${GAME_UNITS[@]}" "${WEB_UNITS[@]}"; do
+    state="$(systemctl is-active "$u" 2>/dev/null)" || true
+    printf '  %-18s %s\n' "$u" "${state:-unknown}"
+    [[ "$state" == failed || "$state" == activating ]] && failed+=("$u")
+  done
+  local online last
+  online="$(curl -fsS --max-time 2 http://127.0.0.1:8088/api/sessions 2>/dev/null || echo '?')"
+  echo "  players online:    $online"
+  echo "  website:           $(site_url)"
+  # The checkout belongs to the service user; tell git that's fine when another user asks.
+  echo "  landsandboat:      $(git -c safe.directory='*' -C "$SERVER_DIR" rev-parse --short HEAD 2>/dev/null || echo 'not installed')"
+  last="$(find "$BACKUP_DIR" -maxdepth 1 -name "$DB_NAME-*.sql.gz" -printf '%T@ %f\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2 || true)"
+  echo "  last backup:       ${last:-none yet}"
+  if ((${#failed[@]})); then
+    echo
+    if [[ $EUID -eq 0 ]]; then
+      for u in "${failed[@]}"; do
+        echo "  --- last log lines of $u ---"
+        journalctl -u "$u" -n 15 --no-pager -o cat 2>/dev/null | sed 's/^/  /'
+      done
+    else
+      echo "  Run 'sudo goomba status' to see why ${failed[*]} failed (or: sudo journalctl -u ${failed[0]} -n 50)."
+    fi
+  fi
+}
+
+cmd_version() {
+  load_conf
+  echo "  goomba-xi-server:  $(git -c safe.directory='*' -C "$REPO_DIR" describe --always --dirty 2>/dev/null || echo unknown)"
+  echo "  landsandboat:      $(git -c safe.directory='*' -C "$SERVER_DIR" rev-parse HEAD 2>/dev/null || echo 'not installed')"
+  echo "  LSB_REF (wanted):  $LSB_REF"
+  echo "  goomba-xi-web:     $(git -c safe.directory='*' -C "$WEB_DIR" rev-parse --short HEAD 2>/dev/null || echo 'not installed')"
+}
+
+cmd_logs() {
+  local which="${1:-map}"
+  exec journalctl -u "goomba-$which" -f -n 200
+}
+
+cmd_gm() {
+  need_root gm
+  load_conf
+  local account="${1:-}" level="${2:-}"
+  [[ -n "$account" && "$level" =~ ^[0-5]$ ]] || die "usage: sudo goomba gm <account login> <0-5>"
+  local n
+  n="$(mysql_root -N "$DB_NAME" -e "UPDATE chars c JOIN accounts a ON a.id = c.accid SET c.gmlevel = $level WHERE a.login = '$(printf '%s' "$account" | sed "s/'/''/g")'; SELECT ROW_COUNT();")"
+  ok "gmlevel $level on $n character(s) of $account (takes effect at next zone or login)"
+}
+
+main() {
+  local cmd="${1:-help}"; shift || true
+  case "$cmd" in
+    install) cmd_install "$@" ;;
+    update) cmd_update "$@" ;;
+    web-update|web-deploy) need_root web-update; load_conf; setup_nginx; web_deploy ;;
+    apply) need_root apply; load_conf; apply_overlay; ok "restart with: sudo goomba restart game" ;;
+    build) need_root build; load_conf; apply_patches; build_server ;;
+    db-update) need_root db-update; load_conf; setup_database ;;
+    start|stop|restart) need_root "$cmd"; load_conf; read -ra units <<<"$(units_for "${1:-all}")"; [[ "$cmd" == stop ]] || systemctl reset-failed "${units[@]}" 2>/dev/null || true; systemctl "$cmd" "${units[@]}" ;;
+    status) cmd_status ;;
+    logs) cmd_logs "$@" ;;
+    backup) cmd_backup ;;
+    restore) cmd_restore "$@" ;;
+    backup-key) cmd_backup_key ;;
+    gm) cmd_gm "$@" ;;
+    zone-ip) cmd_zone_ip "$@" ;;
+    version|--version) cmd_version ;;
+    help|-h|--help) sed -n '2,21p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
+    *) die "unknown command '$cmd' (see: goomba help)" ;;
+  esac
+}
+
+main "$@"

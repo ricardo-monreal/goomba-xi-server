@@ -1,0 +1,181 @@
+diff --git a/src/login/auth_session.cpp b/src/login/auth_session.cpp
+index 486841d8..b7619f47 100644
+--- a/src/login/auth_session.cpp
++++ b/src/login/auth_session.cpp
+@@ -27,6 +27,8 @@
+ #include "common/utils.h"
+ #include "otp_helpers.h"
+ 
++#include <tuple> // [Goomba] Launch token
++
+ #include <bcrypt/BCrypt.hpp>
+ 
+ #include <openssl/rand.h>
+@@ -156,6 +158,7 @@ void auth_session::read_func()
+     std::string            updated_password    = loginHelpers::jsonGet<std::string>(jsonBuffer, "new_password").value_or("");
+     std::string            otp                 = loginHelpers::jsonGet<std::string>(jsonBuffer, "otp").value_or("");
+     std::string            trust_token         = loginHelpers::jsonGet<std::string>(jsonBuffer, "trust_token").value_or("");
++    std::string            login_token         = loginHelpers::jsonGet<std::string>(jsonBuffer, "login_token").value_or(""); // [Goomba] Launch token
+     bool                   trust_this_computer = loginHelpers::jsonGet<bool>(jsonBuffer, "trust_this_computer").value_or(false);
+     std::array<uint8_t, 3> version             = loginHelpers::jsonGet<uint8, 3>(jsonBuffer, "version").value_or(std::array<uint8_t, 3>{ 0, 0, 0 });
+ 
+@@ -169,18 +172,24 @@ void auth_session::read_func()
+ 
+     DebugSockets(fmt::format("auth code: {} from {}", code, ipAddress));
+ 
+-    // data checks
+-    if (loginHelpers::isStringMalformed(username, 16))
++    // [Goomba] Launch token BEGIN
++    // A launch-token login may carry no password, so skip the username/password checks when
++    // one is present (isStringMalformed rejects empty strings).
++    if (login_token.empty())
+     {
+-        ShowWarningFmt("login_parse: malformed username from {}", ipAddress);
+-        return;
+-    }
++        if (loginHelpers::isStringMalformed(username, 16))
++        {
++            ShowWarningFmt("login_parse: malformed username from {}", ipAddress);
++            return;
++        }
+ 
+-    if (loginHelpers::isStringMalformed(password, 32))
+-    {
+-        ShowWarningFmt("login_parse: malformed password from {}", ipAddress);
+-        return;
++        if (loginHelpers::isStringMalformed(password, 32))
++        {
++            ShowWarningFmt("login_parse: malformed password from {}", ipAddress);
++            return;
++        }
+     }
++    // [Goomba] Launch token END
+ 
+     switch (static_cast<login_cmd>(code))
+     {
+@@ -199,16 +208,37 @@ void auth_session::read_func()
+                 return;
+             }
+ 
+-            // Look up and validate account password
+-            auto accountInfo = validatePassword(username, password);
+-            if (!accountInfo)
++            uint32 accountID = 0;
++            uint32 status    = 0;
++
++            // [Goomba] Launch token BEGIN
++            // A single-use token minted by the website (which already checked the password)
++            // stands in for both the password and the OTP code.
++            const bool viaLaunchToken = !login_token.empty();
++            if (viaLaunchToken)
+             {
+-                loginHelpers::recordLoginFailure(ipAddress);
+-                sendLoginResult(login_result::LOGIN_ERROR);
+-                return;
++                auto launchInfo = otpHelpers::validateAndConsumeLaunchToken(login_token);
++                if (!launchInfo)
++                {
++                    loginHelpers::recordLoginFailure(ipAddress);
++                    sendLoginResult(login_result::LOGIN_ERROR_LAUNCH_TOKEN_INVALID);
++                    return;
++                }
++                std::tie(accountID, status) = *launchInfo;
+             }
+-
+-            auto [accountID, status] = *accountInfo;
++            else
++            {
++                // Look up and validate account password
++                auto accountInfo = validatePassword(username, password);
++                if (!accountInfo)
++                {
++                    loginHelpers::recordLoginFailure(ipAddress);
++                    sendLoginResult(login_result::LOGIN_ERROR);
++                    return;
++                }
++                std::tie(accountID, status) = *accountInfo;
++            }
++            // [Goomba] Launch token END
+ 
+             // Reject banned/non-normal accounts before processing OTP or trust tokens
+             if (!(status & ACCOUNT_STATUS_CODE::NORMAL))
+@@ -224,7 +254,8 @@ void auth_session::read_func()
+ 
+             bool otpVerified = false;
+ 
+-            if (otpHelpers::doesAccountNeedOTP(accountID, "TOTP"))
++            // [Goomba] Launch token: the OTP was already satisfied when the token was minted.
++            if (!viaLaunchToken && otpHelpers::doesAccountNeedOTP(accountID, "TOTP"))
+             {
+                 bool trustedByToken = false;
+ 
+diff --git a/src/login/auth_session.h b/src/login/auth_session.h
+index 071372dc..4ecca47b 100644
+--- a/src/login/auth_session.h
++++ b/src/login/auth_session.h
+@@ -65,6 +65,7 @@ enum class login_result : uint8_t
+     LOGIN_SUCCESS_VERIFY_TOTP       = 0x11,
+     LOGIN_SUCCESS_REMOVE_TOTP       = 0x12,
+     LOGIN_ERROR_TRUST_TOKEN_INVALID = 0x13,
++    LOGIN_ERROR_LAUNCH_TOKEN_INVALID = 0x14, // [Goomba] Launch token
+ };
+ 
+ constexpr std::array<uint8, 3> SupportedXiloaderVersion = { 2, 2, 0 };
+diff --git a/src/login/otp_helpers.h b/src/login/otp_helpers.h
+index fa153074..75fac12b 100644
+--- a/src/login/otp_helpers.h
++++ b/src/login/otp_helpers.h
+@@ -381,4 +381,53 @@ inline void removeAllTrustTokens(uint32 accid)
+     db::preparedStmt("DELETE FROM accounts_trust_tokens WHERE accid = ?", accid);
+ }
+ 
++// [Goomba] Launch token BEGIN
++// Launch tokens: a single-use, short-TTL credential minted by the Goomba XI website
++// for a launcher session that already signed in with the account password. Unlike a
++// trust token (which only bypasses the OTP second factor), a launch token stands in
++// for both the password and the OTP code. Same 64-hex-char format and SHA-256-at-rest
++// hashing as trust tokens; the website inserts the hash into accounts_login_tokens
++// and xi_connect consumes it here. Ported from the Phoenix fork (phoenixffxi/Phoenix),
++// so Phoenix's xiloader works unchanged.
++//
++// Returns (accid, account status) iff the token is valid AND we are the caller
++// that consumed it (single-use: the DELETE must affect exactly one row). The
++// status is returned so the caller can run the normal ban/NORMAL check.
++inline auto validateAndConsumeLaunchToken(const std::string& token) -> Maybe<std::pair<uint32, uint32>>
++{
++    if (!isValidTrustTokenFormat(token)) // 64 hex chars — same format as trust tokens
++    {
++        return std::nullopt;
++    }
++
++    const auto hashed = hashTrustToken(token); // SHA-256 hex — same at-rest hashing
++
++    // Resolve accid + account status for a still-valid token.
++    const auto sel = db::preparedStmt(
++        "SELECT lt.accid AS accid, a.status AS status "
++        "FROM accounts_login_tokens lt "
++        "JOIN accounts a ON a.id = lt.accid "
++        "WHERE lt.token = ? AND lt.expires > NOW()",
++        hashed);
++    if (!sel || !sel->next())
++    {
++        return std::nullopt;
++    }
++
++    const uint32 accid  = sel->get<uint32>("accid");
++    const uint32 status = sel->get<uint32>("status");
++
++    // Consume atomically — single-use. Only the caller whose DELETE actually
++    // removes the row (rowsAffected == 1) wins; a concurrent replay removes 0.
++    const auto del = db::preparedStmt("DELETE FROM accounts_login_tokens WHERE token = ? AND expires > NOW()", hashed);
++    if (!del || del->rowsAffected() != 1)
++    {
++        return std::nullopt;
++    }
++
++    return std::make_pair(accid, status);
++}
++
++// [Goomba] Launch token END
++
+ } // namespace otpHelpers

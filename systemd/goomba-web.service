@@ -1,0 +1,21 @@
+[Unit]
+Description=Goomba XI website
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+Group=@USER@
+WorkingDirectory=@ROOT@/web
+EnvironmentFile=/etc/goomba/web.env
+ExecStart=/usr/bin/npm run start -- --hostname 127.0.0.1 --port ${PORT}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

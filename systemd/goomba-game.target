@@ -1,0 +1,7 @@
+[Unit]
+Description=Goomba XI game servers
+Wants=goomba-world.service goomba-connect.service goomba-search.service goomba-map.service goomba-profile.service
+After=mariadb.service
+
+[Install]
+WantedBy=multi-user.target

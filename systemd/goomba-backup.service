@@ -1,0 +1,6 @@
+[Unit]
+Description=Goomba XI nightly database backup
+
+[Service]
+Type=oneshot
+ExecStart=@REPO@/bin/goomba backup
