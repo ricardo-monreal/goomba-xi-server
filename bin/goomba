@@ -129,36 +129,51 @@ install_packages() {
   ok "packages (Node.js $(node -v))"
 }
 
-# Ask one question with a default, on the terminal even when this script was piped into bash
-# (install.sh). Without a terminal (automation) the default is used, so "install" never hangs.
+# Ask one question with a default. Only when stdin is a terminal: piped into "sudo bash" (the
+# one-liner), sudo gives the script a pseudo-terminal that never receives your keystrokes, so
+# reading /dev/tty would wait forever. install.sh passes answers in GOOMBA_ANSWER_* instead.
 ask() {
   local prompt="$1" default="$2" answer=""
-  if [[ -z "${GOOMBA_NONINTERACTIVE:-}" ]] && { : </dev/tty; } 2>/dev/null; then
-    read -r -p "  $prompt [$default]: " answer </dev/tty >/dev/tty 2>&1 || true
+  if [[ -z "${GOOMBA_NONINTERACTIVE:-}" && -t 0 ]]; then
+    read -r -p "  $prompt [$default]: " answer || true
   fi
   echo "${answer:-$default}"
 }
 
 # First run: write /etc/goomba/goomba.conf from the example, asking the few things that differ
-# between installs. Everything else has a working default for a home network.
+# between installs (or taking them from install.sh's --ip/--files/--domain/--email). Everything
+# else has a working default for a home network. A file finished by this step carries
+# GOOMBA_CONFIGURED=1; a file without it (an interrupted first run, or one written by hand) is
+# kept and completed, its own values offered as the defaults.
 create_config() {
-  [[ -f "$CONF" ]] && return 0
+  if [[ -f "$CONF" ]] && grep -qE '^GOOMBA_CONFIGURED="?1"?$' "$CONF"; then return 0; fi
   step "First run: a few questions (press Enter to accept the default)"
-  install -o root -g "$GOOMBA_USER" -m 0640 "$REPO_DIR/config/goomba.conf.example" "$CONF"
-  local ip files_guess files domain email=""
-  ip="$(detect_ip)"
-  ip="$(ask "Address players connect to (this server's LAN IP)" "${ip:-127.0.0.1}")"
+  local cur_ip="" cur_files="" cur_domain="" cur_email=""
+  if [[ -f "$CONF" ]]; then
+    cur_ip="$(sed -n 's/^GOOMBA_ZONE_IP="\(.*\)"$/\1/p' "$CONF")"
+    cur_files="$(sed -n 's/^GOOMBA_FILES_URL="\(.*\)"$/\1/p' "$CONF")"
+    cur_domain="$(sed -n 's/^GOOMBA_DOMAIN="\(.*\)"$/\1/p' "$CONF")"
+    cur_email="$(sed -n 's/^GOOMBA_ACME_EMAIL="\(.*\)"$/\1/p' "$CONF")"
+    [[ "$cur_files" == "http://192.168.1.51" ]] && cur_files=""   # the example's placeholder
+  else
+    install -o root -g "$GOOMBA_USER" -m 0640 "$REPO_DIR/config/goomba.conf.example" "$CONF"
+  fi
+  local ip files domain email
+  ip="${GOOMBA_ANSWER_IP:-$(ask "Address players connect to (this server's LAN IP)" "${cur_ip:-$(detect_ip)}")}"
+  [[ -n "$ip" ]] || ip=127.0.0.1
   valid_ipv4 "$ip" || die "'$ip' is not an IPv4 address"
   # A guess for the file server LXC: the next address up. The question shows it, so it's easy to fix.
-  files_guess="http://${ip%.*}.$(( (${ip##*.} % 254) + 1 ))"
-  files="$(ask "File server URL (the Debian LXC that hosts downloads)" "$files_guess")"
-  domain="$(ask "Domain name for the website (leave empty on a home network)" "")"
-  [[ -n "$domain" ]] && email="$(ask "E-mail for a Let's Encrypt certificate (empty = plain HTTP)" "")"
+  files="${GOOMBA_ANSWER_FILES:-$(ask "File server URL (the Debian LXC that hosts downloads)" "${cur_files:-http://${ip%.*}.$(( (${ip##*.} % 254) + 1 ))}")}"
+  domain="${GOOMBA_ANSWER_DOMAIN-$(ask "Domain name for the website (leave empty on a home network)" "$cur_domain")}"
+  email="${GOOMBA_ANSWER_EMAIL:-$cur_email}"
+  [[ -n "$domain" && -z "$email" ]] && email="$(ask "E-mail for a Let's Encrypt certificate (empty = plain HTTP)" "")"
   conf_set GOOMBA_ZONE_IP "$ip"
   conf_set GOOMBA_FILES_URL "${files%/}"
   conf_set GOOMBA_DOMAIN "$domain"
   conf_set GOOMBA_ACME_EMAIL "$email"
-  ok "wrote $CONF (edit it any time; the comments inside explain each setting)"
+  conf_set GOOMBA_CONFIGURED 1
+  ok "wrote $CONF: players connect to $ip, downloads from ${files%/}${domain:+, website $domain}"
+  [[ -t 0 ]] || warn "no terminal to ask on, so those are defaults: change them in $CONF (see docs/operations.md, Changing addresses)"
 }
 
 create_user_and_dirs() {

@@ -51,8 +51,11 @@ It starts by itself once the VM has the agent's channel: make sure **Options →
 On the VM (over SSH):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ricardo-monreal/goomba-xi-server/main/install.sh | sudo bash
+curl -fsSLO https://raw.githubusercontent.com/ricardo-monreal/goomba-xi-server/main/install.sh
+sudo bash install.sh
 ```
+
+(Download, then run: piped straight into `sudo bash`, the script can't read your answers. For an unattended install, pipe it with the answers instead: `curl -fsSL <url>/install.sh | sudo bash -s -- --ip 192.168.1.50 --files http://192.168.1.51`.)
 
 It asks three questions. Press Enter to accept a suggestion:
 

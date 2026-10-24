@@ -44,7 +44,8 @@ Full walkthrough, including creating the VM and the LXC in Proxmox: **[docs/inst
 On a fresh Ubuntu 26.04 VM (4 cores and 8 GB RAM is comfortable for the build):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ricardo-monreal/goomba-xi-server/main/install.sh | sudo bash
+curl -fsSLO https://raw.githubusercontent.com/ricardo-monreal/goomba-xi-server/main/install.sh
+sudo bash install.sh
 ```
 
 It asks three questions (the server's LAN address, the file server's URL, an optional domain), then installs packages, MariaDB, builds LandSandBoat (20–40 minutes the first time), creates the databases, services, firewall, nginx and the website. Safe to run again: each step skips what is already done.

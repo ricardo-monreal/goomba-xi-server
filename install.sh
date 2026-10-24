@@ -22,6 +22,28 @@ DIR="/opt/goomba-xi-server"
 role=server
 if [[ "${1:-}" == "--file-server" ]]; then role=files; shift; fi
 
+# Game server answers, for when this script is piped into sudo bash and can't ask:
+#   ... | sudo bash -s -- --ip 192.168.1.50 --files http://192.168.1.51 [--domain example.com --email you@example.com]
+if [[ "$role" == server ]]; then
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --ip) export GOOMBA_ANSWER_IP="$2"; shift 2 ;;
+      --files) export GOOMBA_ANSWER_FILES="$2"; shift 2 ;;
+      --domain) export GOOMBA_ANSWER_DOMAIN="$2"; shift 2 ;;
+      --email) export GOOMBA_ANSWER_EMAIL="$2"; shift 2 ;;
+      *) echo "unknown option $1 (use --ip, --files, --domain, --email)" >&2; exit 2 ;;
+    esac
+  done
+  if [[ ! -t 0 && -z "${GOOMBA_ANSWER_FILES:-}" && ! -f /etc/goomba/goomba.conf ]]; then
+    echo "Note: piped into bash, so the installer can't ask questions. Either pass the answers:"
+    echo "  curl -fsSL <url>/install.sh | sudo bash -s -- --ip <this server's IP> --files http://<file server IP>"
+    echo "or download it first and run it, which asks:"
+    echo "  curl -fsSLO <url>/install.sh && sudo bash install.sh"
+    echo "Continuing with detected defaults in 10 seconds (Ctrl+C to stop)..."
+    sleep 10
+  fi
+fi
+
 export DEBIAN_FRONTEND=noninteractive
 if ! command -v git >/dev/null; then
   apt-get update -q
