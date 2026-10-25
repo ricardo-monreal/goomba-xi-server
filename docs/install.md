@@ -222,6 +222,7 @@ Players on your network do the same: register on the website, install the launch
 | Website shows placeholder item icons | Item names and icons are imported once; see the website README, "Item names and icons". |
 | The install stopped half-way | Fix what the error says and run `sudo goomba install` again; finished steps are skipped. |
 | The installer shows a question and pressing Enter does nothing | It was piped into `sudo bash`, which can't read your keys. Ctrl+C, then `cd /opt/goomba-xi-server && sudo git pull && sudo bash bin/goomba install`. The half-written config from the first try is completed, not lost. |
+| Website download links go to `http://10.2.5.64/10.2.5.65/…` ("Lost in the mist") | The file server URL was entered without `http://`. `sudo git -C /opt/goomba-xi-server pull && sudo goomba web-update` fixes it (the installer now adds `http://` itself). |
 | `bash: /opt/goomba-xi-server/bin/goomba: Permission denied` | An old copy of the repository: `cd /opt/goomba-xi-server && sudo git pull`, then `sudo bash bin/goomba install`. |
 | `apt` says "A dependency job for qemu-guest-agent.service failed" | Harmless. Enable **Options → QEMU Guest Agent** for the VM in Proxmox, then Shutdown and Start it from Proxmox (part 1). |
 
