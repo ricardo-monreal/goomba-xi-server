@@ -42,7 +42,16 @@ ok()  { printf '\e[1;32m ok\e[0m %s\n' "$*"; }
 
 FILES="$ROOT/files/launcher"
 SRC="$ROOT/src"
-[[ -d "$FILES" ]] || { echo "$FILES not found: run tools/setup-file-server.sh first" >&2; exit 1; }
+if [[ ! -d "$FILES" ]]; then
+  if [[ -f /etc/goomba/goomba.conf ]]; then
+    echo "This is the game server ($(hostname)). Run this script on the file server (the Debian LXC) instead:" >&2
+    echo "  open the LXC's console in Proxmox (or: pct enter <id> on the Proxmox host), then" >&2
+    echo "  cd /opt/goomba-xi-server && git pull && bash tools/community-packs.sh --base-url http://<file server IP>" >&2
+  else
+    echo "$FILES not found: set this machine up as the file server first (tools/setup-file-server.sh)" >&2
+  fi
+  exit 1
+fi
 
 say "Packages"
 need=()

@@ -71,7 +71,7 @@ The launcher's **Addons** screen offers optional extras from the file server: **
 | XI View UI, widescreen | same | Pivot → UI → **XI View: Widescreen** |
 | TargetLines addon | [Jyouya/targetlines](https://github.com/Jyouya/targetlines) | Catalog → **TargetLines** |
 
-**Where: the file server (10.2.5.65), as root.**
+**Where: the file server (10.2.5.65), as root** — in the LXC's console in Proxmox, or `pct enter <id>` on the Proxmox host. Not on the game server: there the script stops with "This is the game server".
 
 ```bash
 cd /opt/goomba-xi-server && git pull
