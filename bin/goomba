@@ -154,7 +154,6 @@ create_config() {
     cur_files="$(sed -n 's/^GOOMBA_FILES_URL="\(.*\)"$/\1/p' "$CONF")"
     cur_domain="$(sed -n 's/^GOOMBA_DOMAIN="\(.*\)"$/\1/p' "$CONF")"
     cur_email="$(sed -n 's/^GOOMBA_ACME_EMAIL="\(.*\)"$/\1/p' "$CONF")"
-    [[ "$cur_files" == "http://192.168.1.51" ]] && cur_files=""   # the example's placeholder
   else
     install -o root -g "$GOOMBA_USER" -m 0640 "$REPO_DIR/config/goomba.conf.example" "$CONF"
   fi

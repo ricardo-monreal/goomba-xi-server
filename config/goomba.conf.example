@@ -14,7 +14,7 @@ GOOMBA_ZONE_IP=""
 
 # Separate file server (the Debian 13 LXC) that hosts the game client, launcher
 # installers, addons, HD packs and item icons (see docs/file-server.md).
-GOOMBA_FILES_URL="http://192.168.1.51"
+GOOMBA_FILES_URL="http://10.2.5.65"
 
 # Public hostname of the website, e.g. "goomba-xi.com". Leave empty on a home
 # network: the website is then served on http://<GOOMBA_ZONE_IP>.
@@ -46,7 +46,7 @@ LSB_REF="4b49fe56707e44b966d0fdda09f141e93881c854"
 #   sudo goomba apply && sudo goomba db-update && sudo goomba restart game
 GOOMBA_ERA_MODULES="era/sql/wotg era/sql/abyssea era/sql/soa era/sql/rov era/data era/data/abyssea/advanced_job_quest era/lua goomba_era/data/abyssea_cop_level_caps goomba_era/data/abyssea_mazurka"
 
-# Optional Git mirror (tools/git-mirror.sh on the file server), e.g. "http://192.168.1.51/git".
+# Optional Git mirror (tools/git-mirror.sh on the file server), e.g. "http://10.2.5.65/git".
 # When set, every https://github.com/... clone and fetch on this machine
 # (LandSandBoat, its submodules, the website, and the libraries LandSandBoat
 # downloads while building) goes to the mirror instead, so installs, updates and
@@ -68,7 +68,7 @@ WEB_PORT="3000"
 BACKUP_KEEP_DAYS="14"
 
 # Optional off-box copy of every backup, over SSH with rsync, e.g.
-# "goomba-backup@192.168.1.51:." (the file server LXC; tools/setup-file-server.sh
+# "goomba-backup@10.2.5.65:." (the file server LXC; tools/setup-file-server.sh
 # prints the exact value).
 # Run `sudo goomba backup-key` for the one-time setup.
 BACKUP_REMOTE=""

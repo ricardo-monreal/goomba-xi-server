@@ -27,7 +27,7 @@ su - goomba-admin -c /opt/goomba-xi-server/tools/git-mirror.sh
 The first run copies about 40 repositories (several GB; LandSandBoat's navmeshes are the largest) into `/srv/git/github.com/<owner>/<repo>.git`. The list is `/srv/git/mirrors.txt`; the script also follows every mirror's submodules and the libraries its CMake files download, so new ones are picked up when LandSandBoat changes. Check it from the game server:
 
 ```bash
-git ls-remote http://192.168.1.51/git/github.com/LandSandBoat/server | head -1
+git ls-remote http://10.2.5.65/git/github.com/LandSandBoat/server | head -1
 ```
 
 Keep it current with a nightly job (`crontab -e` as `goomba-admin`):
@@ -41,7 +41,7 @@ Keep it current with a nightly job (`crontab -e` as `goomba-admin`):
 In `/etc/goomba/goomba.conf` on the game server:
 
 ```bash
-GIT_MIRROR="http://192.168.1.51/git"
+GIT_MIRROR="http://10.2.5.65/git"
 ```
 
 The next `sudo goomba update` or `sudo goomba web-update` adds one system-wide Git setting that sends every `https://github.com/…` URL to the mirror: LandSandBoat, its submodules, the website and the libraries the build downloads. Clearing `GIT_MIRROR` removes it again. Check it with:
@@ -57,7 +57,7 @@ To install a **new** game server from the mirror, clone this repository from it 
 
 ```bash
 sudo apt install -y git
-sudo git clone http://192.168.1.51/git/github.com/ricardo-monreal/goomba-xi-server /opt/goomba-xi-server
+sudo git clone http://10.2.5.65/git/github.com/ricardo-monreal/goomba-xi-server /opt/goomba-xi-server
 sudo install -d /etc/goomba
 sudo cp /opt/goomba-xi-server/config/goomba.conf.example /etc/goomba/goomba.conf
 sudo nano /etc/goomba/goomba.conf     # GIT_MIRROR, GOOMBA_ZONE_IP, GOOMBA_FILES_URL
@@ -69,8 +69,8 @@ sudo /opt/goomba-xi-server/bin/goomba install
 On the Windows build PC (and any machine you develop on):
 
 ```powershell
-git config --global url."http://192.168.1.51/git/github.com/".insteadOf "https://github.com/"
-git config --global url."goomba-admin@192.168.1.51:/srv/git/github.com/".pushInsteadOf "https://github.com/"
+git config --global url."http://10.2.5.65/git/github.com/".insteadOf "https://github.com/"
+git config --global url."goomba-admin@10.2.5.65:/srv/git/github.com/".pushInsteadOf "https://github.com/"
 ```
 
 Repositories keep their GitHub-style addresses, but fetches come from the mirror and pushes go to it over SSH. When you stop pushing to GitHub, mark your own repositories in `/srv/git/mirrors.txt` so the nightly job stops overwriting them:
@@ -129,8 +129,8 @@ The AppImage is `dist/GoombaXI-<version>-x86_64.AppImage`. Its build tools are c
 2. Copy the two files to the file server, keeping the versioned copies:
 
 ```bash
-scp dist/GoombaXI-Setup-1.0.1.exe dist/GoombaXI-1.0.1-x86_64.AppImage goomba-admin@192.168.1.51:/srv/goomba/files/launcher/releases/
-ssh goomba-admin@192.168.1.51 'cd /srv/goomba/files/launcher && cp releases/GoombaXI-Setup-1.0.1.exe GoombaXI-Setup.exe && cp releases/GoombaXI-1.0.1-x86_64.AppImage GoombaXI.AppImage'
+scp dist/GoombaXI-Setup-1.0.1.exe dist/GoombaXI-1.0.1-x86_64.AppImage goomba-admin@10.2.5.65:/srv/goomba/files/launcher/releases/
+ssh goomba-admin@10.2.5.65 'cd /srv/goomba/files/launcher && cp releases/GoombaXI-Setup-1.0.1.exe GoombaXI-Setup.exe && cp releases/GoombaXI-1.0.1-x86_64.AppImage GoombaXI.AppImage'
 ```
 
 ## 5. Players' Linux runtime
@@ -148,9 +148,9 @@ Then set the addresses in the launcher's `launcher.config.json`, build and publi
 ```json
 "linux": {
   "protonVersion": "GE-Proton11-5",
-  "protonUrl": "http://192.168.1.51/launcher/runtime/<the GE-Proton file>.tar.gz",
-  "umuUrl": "http://192.168.1.51/launcher/runtime/<the umu zipapp file>.tar",
-  "winetricksUrl": "http://192.168.1.51/launcher/runtime/winetricks"
+  "protonUrl": "http://10.2.5.65/launcher/runtime/<the GE-Proton file>.tar.gz",
+  "umuUrl": "http://10.2.5.65/launcher/runtime/<the umu zipapp file>.tar",
+  "winetricksUrl": "http://10.2.5.65/launcher/runtime/winetricks"
 }
 ```
 

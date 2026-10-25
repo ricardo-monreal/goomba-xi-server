@@ -64,7 +64,7 @@ Give yourself level 5 with `sudo goomba gm <account> 5`. In game, commands start
 - **When:** every night at 04:30 (`goomba-backup.timer`), before every `goomba update` and before every `goomba restore`.
 - **What:** both databases (`xidb` is the game, `goomba_web` the website) plus a copy of `/etc/goomba`.
 - **Kept:** 14 days (`BACKUP_KEEP_DAYS`).
-- **Off the box:** when `BACKUP_REMOTE` is set, every backup is copied to the file server ([install.md](install.md), part 3).
+- **Off the box:** when `BACKUP_REMOTE` is set (for example `goomba-backup@10.2.5.65:.`), every backup is also copied to `/srv/goomba/backups/data` on the file server. One-time setup: [install.md](install.md), part 3, "Off-box backups". Every `sudo goomba backup` ends with `ok copied to …` when it works, or `could not copy backups` with the reason.
 
 To bring the server back on a new machine:
 

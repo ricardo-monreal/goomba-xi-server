@@ -7,7 +7,7 @@
 #
 # Mirrors live at <root>/github.com/<owner>/<repo>.git (plus a <repo> link without .git), so a
 # single Git setting on the game server sends every https://github.com/... URL here instead:
-#   GIT_MIRROR="http://192.168.1.51/git" in /etc/goomba/goomba.conf (see docs/without-github.md).
+#   GIT_MIRROR="http://10.2.5.65/git" in /etc/goomba/goomba.conf (see docs/without-github.md).
 #
 # The list is <root>/mirrors.txt, one "owner/repo" per line; it is created with Goomba XI's
 # repositories the first time. Besides the list, the script follows every mirror's submodules and

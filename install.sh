@@ -23,7 +23,7 @@ role=server
 if [[ "${1:-}" == "--file-server" ]]; then role=files; shift; fi
 
 # Game server answers, for when this script is piped into sudo bash and can't ask:
-#   ... | sudo bash -s -- --ip 192.168.1.50 --files http://192.168.1.51 [--domain example.com --email you@example.com]
+#   ... | sudo bash -s -- --ip 10.2.5.64 --files http://10.2.5.65 [--domain example.com --email you@example.com]
 if [[ "$role" == server ]]; then
   while [[ $# -gt 0 ]]; do
     case "$1" in

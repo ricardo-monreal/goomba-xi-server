@@ -23,14 +23,14 @@ The LandSandBoat source is not copied into this repository. `goomba install` clo
 
 ```
  Proxmox
- ├─ Ubuntu 26.04 VM  (game + web, e.g. 192.168.1.50)
+ ├─ Ubuntu 26.04 VM  (game + web, e.g. 10.2.5.64)
  │    nginx :80 ──► website (Next.js :3000)        xi_connect  54001 54230 54231
  │                    │                            xi_search   54002
  │                    └──── MariaDB (localhost) ── xi_map      54230/udp
  │                          xidb + goomba_web      xi_world    (HTTP API :8088, localhost)
  │                                                 xi_profile  51220 51240
  │
- └─ Debian 13 LXC    (files, e.g. 192.168.1.51)
+ └─ Debian 13 LXC    (files, e.g. 10.2.5.65)
       nginx :80 ──► /srv/goomba/files   game client, launcher installers, addons, HD packs, item icons
       ssh         ► /srv/goomba/backups nightly copies of the game server's backups
 ```
@@ -53,7 +53,7 @@ It asks three questions (the server's LAN address, the file server's URL, an opt
 On a fresh Debian 13 LXC, for the file server:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ricardo-monreal/goomba-xi-server/main/install.sh | sudo bash -s -- --file-server --website http://192.168.1.50
+curl -fsSL https://raw.githubusercontent.com/ricardo-monreal/goomba-xi-server/main/install.sh | sudo bash -s -- --file-server --website http://10.2.5.64
 ```
 
 When both are up:

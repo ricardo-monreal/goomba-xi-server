@@ -14,7 +14,7 @@ Plan on an afternoon: most of the time is the server build (20–40 minutes) and
 
 - A Proxmox VE host with about 4 free cores, 10 GB of free RAM and 200 GB of free disk.
 - The **Ubuntu 26.04 Server** ISO uploaded to Proxmox (`local` → ISO Images) and the **Debian 13** container template downloaded (`local` → CT Templates → Templates → `debian-13-standard`).
-- Two fixed addresses on your LAN, one for each machine. This guide uses **192.168.1.50** for the game server and **192.168.1.51** for the file server; use your own throughout. Either set them statically or reserve them in your router's DHCP.
+- Two fixed addresses on your LAN, one for each machine. This guide uses **10.2.5.64** for the game server and **10.2.5.65** for the file server; use your own throughout. Either set them statically or reserve them in your router's DHCP.
 - A **Windows PC** with a fully patched retail FINAL FANTASY XI install, used once to build the game client (part 4). Never log in to a Square Enix account with the copy you build from.
 - A GitHub account (the repositories are under `ricardo-monreal/`). Everything can also run without GitHub; see [without-github.md](without-github.md).
 
@@ -34,7 +34,7 @@ In the Proxmox web UI, **Create VM**:
 
 Install Ubuntu Server with the defaults, plus:
 
-- **Network**: set the static address (192.168.1.50/24, your gateway and DNS), or leave DHCP if you reserved the address in the router.
+- **Network**: set the static address (10.2.5.64/24, your gateway and DNS), or leave DHCP if you reserved the address in the router.
 - **Profile**: your admin user.
 - **SSH**: install OpenSSH server ✓.
 
@@ -55,14 +55,14 @@ curl -fsSLO https://raw.githubusercontent.com/ricardo-monreal/goomba-xi-server/m
 sudo bash install.sh
 ```
 
-(Download, then run: piped straight into `sudo bash`, the script can't read your answers. For an unattended install, pipe it with the answers instead: `curl -fsSL <url>/install.sh | sudo bash -s -- --ip 192.168.1.50 --files http://192.168.1.51`.)
+(Download, then run: piped straight into `sudo bash`, the script can't read your answers. For an unattended install, pipe it with the answers instead: `curl -fsSL <url>/install.sh | sudo bash -s -- --ip 10.2.5.64 --files http://10.2.5.65`.)
 
 It asks three questions. Press Enter to accept a suggestion:
 
 | Question | Answer |
 | --- | --- |
-| Address players connect to | this VM's address, `192.168.1.50` |
-| File server URL | `http://192.168.1.51` (part 3 creates it) |
+| Address players connect to | this VM's address, `10.2.5.64` |
+| File server URL | `http://10.2.5.65` (part 3 creates it) |
 | Domain name | leave empty on a home network |
 
 Then it runs by itself: packages, MariaDB, the LandSandBoat build, the database, services, firewall, nginx and the website. When it prints **Goomba XI is installed**, check:
@@ -71,7 +71,7 @@ Then it runs by itself: packages, MariaDB, the LandSandBoat build, the database,
 goomba status
 ```
 
-All six services should be `active`. Open `http://192.168.1.50` in a browser: the website should load.
+All six services should be `active`. Open `http://10.2.5.64` in a browser: the website should load.
 
 > Your answers are in `/etc/goomba/goomba.conf`. Everything in that file is explained by the comments inside it. If you got an address wrong: `sudo goomba zone-ip <address>` fixes the game address; for anything else edit the file and run `sudo goomba web-update`.
 
@@ -90,7 +90,7 @@ In the Proxmox UI, **Create CT**:
 | Disks | root disk 8 GB; **Add** a mount point: 150 GB, path `/srv/goomba` (holds the client and backups) |
 | CPU | 2 cores |
 | Memory | 1024 MB, swap 512 MB |
-| Network | bridge `vmbr0`, IPv4 static `192.168.1.51/24` and your gateway |
+| Network | bridge `vmbr0`, IPv4 static `10.2.5.65/24` and your gateway |
 | DNS | your router or `1.1.1.1` |
 
 Start it at boot (Options → Start at boot ✓) and start it.
@@ -102,7 +102,7 @@ pveam list local | grep debian-13        # the exact template file name
 pct create 151 local:vztmpl/debian-13-standard_<version>_amd64.tar.zst \
   --hostname goomba-files --unprivileged 1 --cores 2 --memory 1024 --swap 512 \
   --rootfs local-lvm:8 --mp0 local-lvm:150,mp=/srv/goomba \
-  --net0 name=eth0,bridge=vmbr0,ip=192.168.1.51/24,gw=192.168.1.1 \
+  --net0 name=eth0,bridge=vmbr0,ip=10.2.5.65/24,gw=10.2.5.1 \
   --onboot 1 --start 1
 ```
 
@@ -113,26 +113,72 @@ Open the container's console (or `pct enter 151` on the host) and run:
 ```bash
 apt update && apt install -y curl sudo
 adduser goomba-admin          # the account you upload files with (scp/SFTP)
-curl -fsSL https://raw.githubusercontent.com/ricardo-monreal/goomba-xi-server/main/install.sh | bash -s -- --file-server --owner goomba-admin --website http://192.168.1.50
+curl -fsSL https://raw.githubusercontent.com/ricardo-monreal/goomba-xi-server/main/install.sh | bash -s -- --file-server --owner goomba-admin --website http://10.2.5.64
 ```
 
-It installs nginx and SSH, creates the folders under `/srv/goomba/files` (owned by `goomba-admin`), and serves them on `http://192.168.1.51`. Check from any PC: `http://192.168.1.51/launcher/news.json` shows a welcome message.
+It installs nginx and SSH, creates the folders under `/srv/goomba/files` (owned by `goomba-admin`), and serves them on `http://10.2.5.65`. Check from any PC: `http://10.2.5.65/launcher/news.json` shows a welcome message.
 
 ### Off-box backups (recommended)
 
-The game server backs up both databases every night at 04:30. To keep a copy on the file server as well, on the **game server**:
+The game server already dumps both databases to its own disk every night at 04:30 (`/opt/goomba/backups`). This one-time setup adds a second copy on the file server, so a broken VM disk can't take the backups with it. It lets the game server send files to the LXC over SSH without a password, using a key that can do only one thing: copy files into `/srv/goomba/backups/data` on the LXC.
+
+Do it once both machines are installed (the file server setup puts the helper script on the LXC).
+
+**1. On the game server (10.2.5.64): get the key and the command.**
 
 ```bash
+cd /opt/goomba-xi-server && sudo git pull
 sudo goomba backup-key
 ```
 
-It prints a command. Run that command on the **file server** (it authorizes the key, limited to copying backups), then put the `BACKUP_REMOTE=...` line it prints into `/etc/goomba/goomba.conf` on the game server and test:
+It prints something like:
 
-```bash
-sudo goomba backup        # ends with: ok copied to goomba-backup@192.168.1.51:.
+```
+Authorize this key for the backup user on the file server. On the Debian LXC run:
+
+  sudo bash /opt/goomba-xi-server/tools/setup-file-server.sh --backup-key 'ssh-ed25519 AAAAC3Nz...xyz goomba-backup@goomba-xi'
 ```
 
-From then on every backup, nightly or manual, is copied to `/srv/goomba/backups/data` on the file server.
+Copy the whole `sudo bash … --backup-key '…'` line, with the quotes and the long key intact.
+
+**2. On the file server (10.2.5.65): authorize the key.** In the LXC's console (Proxmox, or `pct enter <id>` on the host), paste the line and run it. It ends with:
+
+```
+  authorized. On the game server set in /etc/goomba/goomba.conf:
+    BACKUP_REMOTE="goomba-backup@10.2.5.65:."
+```
+
+The `:.` at the end is correct: that key only sees the backups folder. (The script remembers the options from the first run, so `--owner` and `--website` don't need repeating.)
+
+**3. On the game server: turn on the copy.**
+
+```bash
+sudo nano /etc/goomba/goomba.conf
+```
+
+Change the last line, `BACKUP_REMOTE=""`, to:
+
+```
+BACKUP_REMOTE="goomba-backup@10.2.5.65:."
+```
+
+Save with Ctrl+O, Enter, then exit with Ctrl+X.
+
+**4. Test it.**
+
+```bash
+sudo goomba backup
+```
+
+The last line should be `ok copied to goomba-backup@10.2.5.65:.`, and on the file server `ls /srv/goomba/backups/data` lists the same `xidb-…`, `goomba_web-…` and `etc-goomba-…` files. From then on every backup (nightly, and the ones `goomba update` and `goomba restore` take) is copied there automatically, and old copies are pruned there too.
+
+If it ends with `could not copy backups` instead:
+
+| Cause | Check |
+| --- | --- |
+| The key wasn't authorized | Redo step 2, pasting the whole line |
+| The LXC isn't reachable on SSH | `ssh goomba-backup@10.2.5.65` from the game server should answer (and then refuse a normal login); a timeout means the LXC is off or port 22 is blocked |
+| Typo in `BACKUP_REMOTE` | It must be exactly `goomba-backup@10.2.5.65:.` |
 
 ## Part 4: The game client and the launcher
 
@@ -141,22 +187,22 @@ Players install one program, the **Goomba XI launcher**, which downloads the gam
 1. **The game client** (once, and again only when the game data changes): on the Windows PC, `tools/build-client.mjs` packs FFXI, PlayOnline, Ashita, xiloader and the Era-DATs into one folder, and `tools/make-manifest.mjs` turns it into a manifest plus compressed files. Copy the result to the file server:
 
    ```powershell
-   scp -r .\publish\files goomba-admin@192.168.1.51:/srv/goomba/files/launcher/client/
-   scp .\publish\manifest.json goomba-admin@192.168.1.51:/srv/goomba/files/launcher/client/
+   scp -r .\publish\files goomba-admin@10.2.5.65:/srv/goomba/files/launcher/client/
+   scp .\publish\manifest.json goomba-admin@10.2.5.65:/srv/goomba/files/launcher/client/
    ```
 
 2. **The launcher** (Windows installer and Linux AppImage): point it at your servers, then build it:
 
    ```bash
-   node tools/configure.mjs --server 192.168.1.50 --files http://192.168.1.51
+   node tools/configure.mjs --server 10.2.5.64 --files http://10.2.5.65
    git commit -am "Point the launcher at my servers" && git tag v1.0.0 && git push origin main v1.0.0
    ```
 
    The tag starts the GitHub **release** workflow, which builds `GoombaXI-Setup-1.0.0.exe` and `GoombaXI-1.0.0-x86_64.AppImage`. Download them from the release and copy them to the file server under fixed names, so the website's download buttons always get the latest:
 
    ```bash
-   scp GoombaXI-Setup-1.0.0.exe goomba-admin@192.168.1.51:/srv/goomba/files/launcher/GoombaXI-Setup.exe
-   scp GoombaXI-1.0.0-x86_64.AppImage goomba-admin@192.168.1.51:/srv/goomba/files/launcher/GoombaXI.AppImage
+   scp GoombaXI-Setup-1.0.0.exe goomba-admin@10.2.5.65:/srv/goomba/files/launcher/GoombaXI-Setup.exe
+   scp GoombaXI-1.0.0-x86_64.AppImage goomba-admin@10.2.5.65:/srv/goomba/files/launcher/GoombaXI.AppImage
    ```
 
    (Local builds work too: `npm run dist` on Windows, `npm run dist:linux` on Linux.)
@@ -165,7 +211,7 @@ The website's **Getting Started** page links to those two files.
 
 ## Part 5: First login
 
-1. Open `http://192.168.1.50/register` and create your account (it agrees to the rules page; edit the rules in the website repository's `src/app/rules/page.tsx`).
+1. Open `http://10.2.5.64/register` and create your account (it agrees to the rules page; edit the rules in the website repository's `src/app/rules/page.tsx`).
 2. Install the launcher from the website's **Getting Started** page, press **Install**, then sign in with the same username and password.
 3. Press **Play** and create a character.
 4. Give yourself GM rights, then zone or log out and back in:
@@ -182,9 +228,12 @@ Players on your network do the same: register on the website, install the launch
 | --- | --- |
 | `goomba status` shows a service `failed` | `sudo goomba status` prints its last log lines. Most often the database login: `sudo goomba db-update`. |
 | The launcher says it can't reach the server | The launcher was built with the wrong address: `node tools/configure.mjs --show` in the launcher repository, then rebuild. |
-| Login works, character list loads, then the game hangs at "Downloading data" | The zone IP: `sudo goomba zone-ip` should show the game server's LAN address. Fix with `sudo goomba zone-ip 192.168.1.50`. |
-| "Install" in the launcher fails | The client isn't on the file server yet: `http://192.168.1.51/launcher/client/manifest.json` must open. |
+| Login works, character list loads, then the game hangs at "Downloading data" | The zone IP: `sudo goomba zone-ip` should show the game server's LAN address. Fix with `sudo goomba zone-ip 10.2.5.64`. |
+| "Install" in the launcher fails | The client isn't on the file server yet: `http://10.2.5.65/launcher/client/manifest.json` must open. |
 | Website shows placeholder item icons | Item names and icons are imported once; see the website README, "Item names and icons". |
 | The install stopped half-way | Fix what the error says and run `sudo goomba install` again; finished steps are skipped. |
+| The installer shows a question and pressing Enter does nothing | It was piped into `sudo bash`, which can't read your keys. Ctrl+C, then `cd /opt/goomba-xi-server && sudo git pull && sudo bash bin/goomba install`. The half-written config from the first try is completed, not lost. |
+| `bash: /opt/goomba-xi-server/bin/goomba: Permission denied` | An old copy of the repository: `cd /opt/goomba-xi-server && sudo git pull`, then `sudo bash bin/goomba install`. |
+| `apt` says "A dependency job for qemu-guest-agent.service failed" | Harmless. Enable **Options → QEMU Guest Agent** for the VM in Proxmox, then Shutdown and Start it from Proxmox (part 1). |
 
 Next: [operations.md](operations.md) for day-to-day running.

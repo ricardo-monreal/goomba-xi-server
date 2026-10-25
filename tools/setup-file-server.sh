@@ -5,7 +5,7 @@
 #
 #   sudo tools/setup-file-server.sh [options]
 #
-#   --website URL        The Goomba XI website, e.g. http://192.168.1.50 (allowed to load item icons)
+#   --website URL        The Goomba XI website, e.g. http://10.2.5.64 (allowed to load item icons)
 #   --owner USER         Who uploads files (owns /srv/goomba/files). Default: the user running sudo.
 #   --backup-key 'KEY'   Authorize the game server's backup key (from: sudo goomba backup-key)
 #   --git-mirror         Also serve /srv/git as a read-only Git mirror (tools/git-mirror.sh)

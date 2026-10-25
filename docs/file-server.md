@@ -53,8 +53,8 @@ Upload files before the files that point at them, so players never see a manifes
 From the PC that built the client:
 
 ```bash
-rsync -av publish/files/ goomba-admin@192.168.1.51:/srv/goomba/files/launcher/client/files/
-rsync -av publish/manifest.json goomba-admin@192.168.1.51:/srv/goomba/files/launcher/client/
+rsync -av publish/files/ goomba-admin@10.2.5.65:/srv/goomba/files/launcher/client/files/
+rsync -av publish/manifest.json goomba-admin@10.2.5.65:/srv/goomba/files/launcher/client/
 ```
 
 On Windows without rsync, `scp -r` works the same way (or WinSCP).
@@ -65,7 +65,7 @@ On Windows without rsync, `scp -r` works the same way (or WinSCP).
 
 ```json
 [
-  { "title": "Harvest Festival", "date": "Oct 31, 2026", "body": "Pumpkins have appeared in all three nations.", "url": "http://192.168.1.50/blog/harvest-festival" }
+  { "title": "Harvest Festival", "date": "Oct 31, 2026", "body": "Pumpkins have appeared in all three nations.", "url": "http://10.2.5.64/blog/harvest-festival" }
 ]
 ```
 
