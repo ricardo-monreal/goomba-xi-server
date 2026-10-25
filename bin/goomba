@@ -604,7 +604,7 @@ cmd_backup_key() {
   ensure_backup_key
   echo "Authorize this key for the backup user on the file server. On the Debian LXC run:"
   echo
-  echo "  sudo /opt/goomba-xi-server/tools/setup-file-server.sh --backup-key '$(cat "$BACKUP_KEY.pub")'"
+  echo "  sudo bash /opt/goomba-xi-server/tools/setup-file-server.sh --backup-key '$(cat "$BACKUP_KEY.pub")'"
   echo
   echo "then set BACKUP_REMOTE in $CONF to what that command prints (goomba-backup@<file server>:.)"
   echo "and test with: sudo goomba backup"
