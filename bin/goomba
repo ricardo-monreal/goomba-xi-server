@@ -167,11 +167,13 @@ create_config() {
   email="${GOOMBA_ANSWER_EMAIL:-$cur_email}"
   [[ -n "$domain" && -z "$email" ]] && email="$(ask "E-mail for a Let's Encrypt certificate (empty = plain HTTP)" "")"
   conf_set GOOMBA_ZONE_IP "$ip"
-  conf_set GOOMBA_FILES_URL "${files%/}"
+  files="${files%/}"
+  [[ -z "$files" || "$files" =~ ^https?:// ]] || files="http://$files"   # "10.2.5.65" → "http://10.2.5.65"
+  conf_set GOOMBA_FILES_URL "$files"
   conf_set GOOMBA_DOMAIN "$domain"
   conf_set GOOMBA_ACME_EMAIL "$email"
   conf_set GOOMBA_CONFIGURED 1
-  ok "wrote $CONF: players connect to $ip, downloads from ${files%/}${domain:+, website $domain}"
+  ok "wrote $CONF: players connect to $ip, downloads from $files${domain:+, website $domain}"
   [[ -t 0 ]] || warn "no terminal to ask on, so those are defaults: change them in $CONF (see docs/operations.md, Changing addresses)"
 }
 
@@ -228,6 +230,11 @@ EOF
 # there and running "goomba web-update" keeps the website's links right.
 sync_site_url() {
   [[ -f "$WEB_ENV" ]] || return 0
+  # A file server URL typed without http:// makes every download link relative to the website.
+  if [[ -n "${GOOMBA_FILES_URL:-}" && ! "$GOOMBA_FILES_URL" =~ ^https?:// ]]; then
+    GOOMBA_FILES_URL="http://${GOOMBA_FILES_URL%/}"
+    conf_set GOOMBA_FILES_URL "$GOOMBA_FILES_URL"
+  fi
   local want; want="$(site_url)"
   if [[ "$(env_get "$WEB_ENV" SITE_URL)" != "$want" ]]; then
     sed -i "s#^SITE_URL=.*#SITE_URL=$want#" "$WEB_ENV"
