@@ -16,6 +16,7 @@
 #   sudo bin/goomba zone-ip [address|auto]  Show or set the address game clients connect to
 #   sudo bin/goomba backup-key     Show the SSH key to authorize on the backup machine
 #   sudo bin/goomba ahbot on|off|refresh|clear|status   Auction House bot (stocks and buys for solo play)
+#   sudo bin/goomba web-items      Import item names and icons for the website (from Era-DATs)
 #        bin/goomba version        Goomba XI, LandSandBoat and website versions
 #
 # Configuration: /etc/goomba/goomba.conf (from config/goomba.conf.example).
@@ -600,6 +601,37 @@ web_deploy() {
   ok "website running on 127.0.0.1:$WEB_PORT"
 }
 
+# Item names, descriptions and icons for the website, from the Era-DATs (YAML for equipment and
+# usable items, the raw ROM/118/106.DAT for crystals, materials and furnishings). Icons are served
+# by this machine's nginx at /icons/items/ (nginx/goomba-web.conf), so the file server needn't
+# hold them.
+ICONS_DIR=/var/lib/goomba/icons/items
+web_items() {
+  step "Website item names and icons (Era-DATs)"
+  configure_git_mirror
+  local era="$GOOMBA_ROOT/cache/era-dats"
+  install -d -o "$GOOMBA_USER" -g "$GOOMBA_USER" "$GOOMBA_ROOT/cache"
+  if [[ ! -d "$era/.git" ]]; then
+    as_user git clone -q --depth 1 --filter=blob:none --sparse https://github.com/phoenixffxi/Era-DATs "$era"
+    as_user git -C "$era" sparse-checkout set --no-cone /YAML/ROM/118/ /YAML/ROM/286/ /YAML/ROM/301/ /ROM/118/106.DAT
+  else
+    as_user git -C "$era" pull -q --ff-only || warn "could not update $era; using the copy there"
+  fi
+  install -d -m 0755 /var/lib/goomba /var/lib/goomba/icons
+  install -d -o "$GOOMBA_USER" -g "$GOOMBA_USER" -m 0755 "$ICONS_DIR"
+  # shellcheck disable=SC2016  # expanded by the inner shell
+  as_user bash -c 'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"
+    node scripts/import-items.mjs --era "$3" --icons "$4"' _ "$WEB_ENV" "$WEB_DIR" "$era" "$ICONS_DIR"
+  if grep -q '^ICONS_URL=' "$WEB_ENV"; then
+    sed -i 's#^ICONS_URL=.*#ICONS_URL=/icons/items#' "$WEB_ENV"
+  else
+    printf '# Item icons served by nginx from %s (goomba web-items).\nICONS_URL=/icons/items\n' "$ICONS_DIR" >> "$WEB_ENV"
+  fi
+  setup_nginx
+  systemctl restart goomba-web.service
+  ok "$(find "$ICONS_DIR" -name '*.png' | wc -l) item icons at $(site_url)/icons/items/"
+}
+
 # ---- backups -------------------------------------------------------------------------------
 
 ensure_backup_key() {
@@ -866,6 +898,7 @@ cmd_install() {
   setup_nginx
   systemctl start goomba-game.target
   web_deploy
+  web_items || warn "item names and icons were not imported; run later: sudo goomba web-items"
   ensure_backup_key
   ln -sf "$REPO_DIR/bin/goomba" /usr/local/bin/goomba
   printf '\n%sGoomba XI is installed.%s\n' "$c_ok" "$c_off"
@@ -976,8 +1009,9 @@ main() {
     gm) cmd_gm "$@" ;;
     zone-ip) cmd_zone_ip "$@" ;;
     ahbot) cmd_ahbot "$@" ;;
+    web-items) need_root web-items; load_conf; web_items ;;
     version|--version) cmd_version ;;
-    help|-h|--help) sed -n '2,22p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
+    help|-h|--help) sed -n '2,23p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
     *) die "unknown command '$cmd' (see: goomba help)" ;;
   esac
 }

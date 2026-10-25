@@ -220,7 +220,7 @@ Players on your network do the same: register on the website, install the launch
 | The launcher says it can't reach the server | The launcher was built with the wrong address: `node tools/configure.mjs --show` in the launcher repository, then rebuild. |
 | Login works, character list loads, then the game hangs at "Downloading data" | The zone IP: `sudo goomba zone-ip` should show the game server's LAN address. Fix with `sudo goomba zone-ip 10.2.5.64`. |
 | "Install" in the launcher fails | The client isn't on the file server yet: `http://10.2.5.65/launcher/client/manifest.json` must open. |
-| Website shows placeholder item icons | Item names and icons are imported once; see the website README, "Item names and icons". |
+| Website shows placeholder item icons | `cd /opt/goomba-xi-server && sudo git pull && sudo goomba web-items` (imports about 23,000 item names and icons). |
 | The install stopped half-way | Fix what the error says and run `sudo goomba install` again; finished steps are skipped. |
 | The installer shows a question and pressing Enter does nothing | It was piped into `sudo bash`, which can't read your keys. Ctrl+C, then `cd /opt/goomba-xi-server && sudo git pull && sudo bash bin/goomba install`. The half-written config from the first try is completed, not lost. |
 | Website download links go to `http://10.2.5.64/10.2.5.65/…` ("Lost in the mist") | The file server URL was entered without `http://`. `sudo git -C /opt/goomba-xi-server pull && sudo goomba web-update` fixes it (the installer now adds `http://` itself). |
