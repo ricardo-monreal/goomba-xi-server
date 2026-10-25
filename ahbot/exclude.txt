@@ -1,0 +1,6 @@
+# Items the Auction House bot never sells or buys, one item id per line (see scripts/enum/item.lua
+# on the server, or the website's item pages, for ids). After changing this file:
+#   sudo goomba ahbot refresh
+#
+# Example:
+# 4116    # hi-potion

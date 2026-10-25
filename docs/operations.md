@@ -18,6 +18,7 @@ Everything is done with the `goomba` command on the game server. Commands that c
 | `sudo goomba web-update` | Update and rebuild the website. |
 | `sudo goomba build` / `db-update` | Just rebuild the servers / just apply database updates. |
 | `sudo goomba backup-key` | Show the SSH key for copying backups to the file server. |
+| `sudo goomba ahbot on\|off\|refresh\|clear\|status` | The Auction House bot for solo play: [auction-house.md](auction-house.md). |
 | `goomba version` | The exact commits running. |
 
 ## Files and folders

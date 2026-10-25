@@ -72,3 +72,13 @@ BACKUP_KEEP_DAYS="14"
 # prints the exact value).
 # Run `sudo goomba backup-key` for the one-time setup.
 BACKUP_REMOTE=""
+
+# Auction House bot (sudo goomba ahbot on): keeps the AH stocked for a solo player and buys what
+# players list. Uncomment to change. Prices come from ffxiah.com, kept between what NPCs pay and
+# what NPC shops charge; AHBOT_PRICE_MULTIPLIER scales them (0.5 = half price).
+#AHBOT_NAME="Goomba AH"          # seller/buyer name shown on the AH (max 15 characters)
+#AHBOT_STOCK_SINGLE="3"          # copies of each single item kept for sale
+#AHBOT_STOCK_STACKS="3"          # stacks of each stackable item kept for sale
+#AHBOT_PRICE_MULTIPLIER="1.0"
+#AHBOT_TICK="30"                 # seconds between buying player listings
+#AHBOT_RESTOCK="3600"            # seconds between restocks

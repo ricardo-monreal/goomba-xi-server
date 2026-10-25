@@ -23,6 +23,7 @@ Tick these off as you go; each line links to its part.
 | 4 | [Client and launcher](client-and-launcher.md) | `http://10.2.5.65/launcher/client/manifest.json` loads; the website's download links work |
 | 5 | [First login](#part-5-first-login) | You are in game with GM rights |
 | 6 | [Community packs](file-server.md#community-packs-and-addons-maps-xi-view-targetlines) (optional) | Combined Maps, XI View and TargetLines show in the launcher's Addons screen |
+| 7 | [Auction House bot](auction-house.md) (optional, for solo play) | `sudo goomba ahbot status` shows thousands of listings |
 
 ## What you need
 

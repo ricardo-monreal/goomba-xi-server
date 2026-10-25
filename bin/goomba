@@ -15,6 +15,7 @@
 #   sudo bin/goomba gm <account> <level>   Give every character on an account a GM level (0-5)
 #   sudo bin/goomba zone-ip [address|auto]  Show or set the address game clients connect to
 #   sudo bin/goomba backup-key     Show the SSH key to authorize on the backup machine
+#   sudo bin/goomba ahbot on|off|refresh|clear|status   Auction House bot (stocks and buys for solo play)
 #        bin/goomba version        Goomba XI, LandSandBoat and website versions
 #
 # Configuration: /etc/goomba/goomba.conf (from config/goomba.conf.example).
@@ -51,6 +52,9 @@ load_conf() {
     # shellcheck source=/dev/null
     source "$REPO_DIR/config/goomba.conf.example"
   fi
+  # Auction House bot settings (goomba.conf may override; see config/goomba.conf.example).
+  : "${AHBOT_VERSION:=7.0.1}" "${AHBOT_REF:=8a42d681e6c94437bade0d4d03d9a8ac9234db0f}" "${AHBOT_NAME:=Goomba AH}" "${AHBOT_TICK:=30}" "${AHBOT_RESTOCK:=3600}"
+  : "${AHBOT_STOCK_SINGLE:=3}" "${AHBOT_STOCK_STACKS:=3}" "${AHBOT_PRICE_MULTIPLIER:=1.0}"
   SERVER_DIR="$GOOMBA_ROOT/server"
   BUILD_DIR="$GOOMBA_ROOT/build"
   VENV="$GOOMBA_ROOT/venv"
@@ -691,6 +695,155 @@ cmd_restore() {
   ok "$db restored (what was there before was backed up first, in $BACKUP_DIR)"
 }
 
+# ---- Auction House bot -----------------------------------------------------------------------
+# ffxiahbot (github.com/AdamGagorik/ffxiahbot) keeps the AH stocked for a solo player and buys what
+# the player lists. Its item list is generated for this server by tools/ah-items.py: Level 75 era
+# items only, nothing Rare/Ex, and prices kept between NPC buy-back and NPC shop prices so the
+# bot can't be used to make gil from vendors.
+
+ahbot_paths() {
+  AHBOT_DIR="$GOOMBA_ROOT/ahbot"
+  AHBOT_VENV="$AHBOT_DIR/venv"
+  AHBOT_SRC="$AHBOT_DIR/ffxiahbot"
+}
+
+ahbot_bin() { as_user env HOME="$AHBOT_DIR" --chdir="$AHBOT_DIR" "$AHBOT_VENV/bin/ffxiahbot" --logfile "$AHBOT_DIR/ahbot.log" "$@"; }
+
+ahbot_setup() {
+  ahbot_paths
+  step "Auction House bot (ffxiahbot $AHBOT_VERSION)"
+  install -d -o "$GOOMBA_USER" -g "$GOOMBA_USER" -m 0750 "$AHBOT_DIR"
+  local py
+  py="$(command -v python3)"
+  "$py" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 13) else 1)' \
+    || die "ffxiahbot needs Python 3.13 or newer; this system has $("$py" --version)"
+  [[ -x "$AHBOT_VENV/bin/python" ]] || as_user "$py" -m venv "$AHBOT_VENV"
+  as_user "$AHBOT_VENV/bin/pip" install -q --upgrade pip
+  as_user "$AHBOT_VENV/bin/pip" install -q "ffxiahbot==$AHBOT_VERSION"
+  # The 75-era price list ships in the repository, not the Python package.
+  configure_git_mirror
+  if [[ ! -d "$AHBOT_SRC/.git" ]]; then
+    as_user git clone -q --filter=blob:none https://github.com/AdamGagorik/ffxiahbot "$AHBOT_SRC"
+  fi
+  as_user git -C "$AHBOT_SRC" fetch -q origin
+  as_user git -C "$AHBOT_SRC" checkout -q --force --detach "$AHBOT_REF"
+  # Config: the game database login from server.env. Readable by the service user only.
+  local login pw
+  login="$(env_get "$SERVER_ENV" XI_NETWORK_SQL_LOGIN)"
+  pw="$(env_get "$SERVER_ENV" XI_NETWORK_SQL_PASSWORD)"
+  ( umask 077
+    cat > "$AHBOT_DIR/config.yaml" <<EOF
+# Written by bin/goomba (ahbot settings are in $CONF). Edits here are overwritten.
+name: "$AHBOT_NAME"
+tick: $AHBOT_TICK
+restock: $AHBOT_RESTOCK
+use_buying_rates: false
+use_selling_rates: false
+hostname: 127.0.0.1
+database: $DB_NAME
+username: $login
+password: "$pw"
+port: 3306
+fail: false
+EOF
+  )
+  chown "$GOOMBA_USER:$GOOMBA_USER" "$AHBOT_DIR/config.yaml"
+  ok "ffxiahbot installed in $AHBOT_VENV"
+}
+
+ahbot_items() {
+  ahbot_paths
+  step "Auction House item list"
+  local tsv="$AHBOT_DIR/item_basic.tsv"
+  mysql_root -N -B "$DB_NAME" -e "SELECT itemid, stackSize, flags, aH, BaseSell, name FROM item_basic" > "$tsv"
+  python3 "$REPO_DIR/tools/ah-items.py" --lsb "$SERVER_DIR" --prices "$AHBOT_SRC/bin/items75.csv" \
+    --items "$tsv" --settings "$REPO_DIR/settings/main.lua" --exclude "$REPO_DIR/ahbot/exclude.txt" \
+    --stock-single "$AHBOT_STOCK_SINGLE" --stock-stacks "$AHBOT_STOCK_STACKS" \
+    --price-multiplier "$AHBOT_PRICE_MULTIPLIER" --out "$AHBOT_DIR/items.csv"
+  rm -f "$tsv"
+  chown "$GOOMBA_USER:$GOOMBA_USER" "$AHBOT_DIR/items.csv"
+}
+
+ahbot_unit() {
+  ahbot_paths
+  cat > /etc/systemd/system/goomba-ahbot.service <<EOF
+[Unit]
+Description=Goomba XI Auction House bot (ffxiahbot)
+PartOf=goomba-game.target
+After=mariadb.service goomba-world.service
+Requires=mariadb.service
+
+[Service]
+Type=simple
+User=$GOOMBA_USER
+Group=$GOOMBA_USER
+WorkingDirectory=$AHBOT_DIR
+Environment=HOME=$AHBOT_DIR
+ExecStart=$AHBOT_VENV/bin/ffxiahbot --silent --logfile $AHBOT_DIR/ahbot.log broker --config $AHBOT_DIR/config.yaml --inp-csv $AHBOT_DIR/items.csv --buy-items --sell-items --buy-immediately
+Restart=always
+RestartSec=30
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=goomba-game.target
+EOF
+  systemctl daemon-reload
+}
+
+# Bot listings that are for sale (sold history stays, so prices keep showing in the AH).
+ahbot_clear() { ahbot_paths; ahbot_bin --silent clear --config "$AHBOT_DIR/config.yaml" --no-prompt; }
+ahbot_refill() { ahbot_paths; ahbot_bin --silent refill --config "$AHBOT_DIR/config.yaml" --inp-csv "$AHBOT_DIR/items.csv" --no-prompt; }
+
+cmd_ahbot() {
+  need_root ahbot
+  load_conf
+  ahbot_paths
+  case "${1:-status}" in
+    on)
+      ahbot_setup
+      ahbot_items
+      ahbot_unit
+      step "Stocking the Auction House (first fill)"
+      ahbot_refill
+      systemctl enable goomba-ahbot.service >/dev/null
+      systemctl restart goomba-ahbot.service
+      ok "the bot is running: it restocks every $((AHBOT_RESTOCK / 60)) minutes and buys player listings every $AHBOT_TICK seconds"
+      ;;
+    refresh)
+      [[ -f "$AHBOT_DIR/config.yaml" ]] || die "the bot isn't set up yet: sudo goomba ahbot on"
+      ahbot_setup
+      ahbot_items
+      ahbot_unit
+      systemctl stop goomba-ahbot.service
+      step "Replacing the bot's listings with the new prices"
+      ahbot_clear
+      ahbot_refill
+      systemctl restart goomba-ahbot.service
+      ok "item list and prices refreshed"
+      ;;
+    clear)
+      systemctl stop goomba-ahbot.service 2>/dev/null || true
+      ahbot_clear
+      ok "the bot's listings were removed (start it again with: sudo goomba ahbot on)"
+      ;;
+    off)
+      systemctl disable --now goomba-ahbot.service 2>/dev/null || true
+      ok "the bot is stopped; its listings stay up (remove them with: sudo goomba ahbot clear)"
+      ;;
+    status)
+      echo "  service:   $(systemctl is-active goomba-ahbot 2>/dev/null || true)"
+      echo "  items:     $( [[ -f "$AHBOT_DIR/items.csv" ]] && echo $(( $(wc -l < "$AHBOT_DIR/items.csv") - 1 )) || echo 0 ) in $AHBOT_DIR/items.csv"
+      echo "  for sale:  $(mysql_root -N "$DB_NAME" -e "SELECT COUNT(*) FROM auction_house WHERE seller = 0 AND sale = 0") bot listings"
+      echo "  bought:    $(mysql_root -N "$DB_NAME" -e "SELECT COUNT(*) FROM auction_house WHERE seller <> 0 AND buyer_name = '$(printf '%s' "$AHBOT_NAME" | sed "s/'/''/g")'") player listings"
+      echo "  log:       $AHBOT_DIR/ahbot.log"
+      ;;
+    *) die "usage: sudo goomba ahbot on|off|refresh|clear|status" ;;
+  esac
+}
+
 # ---- commands ------------------------------------------------------------------------------
 
 cmd_install() {
@@ -766,6 +919,9 @@ cmd_status() {
   echo "  landsandboat:      $(git -c safe.directory='*' -C "$SERVER_DIR" rev-parse --short HEAD 2>/dev/null || echo 'not installed')"
   last="$(find "$BACKUP_DIR" -maxdepth 1 -name "$DB_NAME-*.sql.gz" -printf '%T@ %f\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2 || true)"
   echo "  last backup:       ${last:-none yet}"
+  if [[ -f /etc/systemd/system/goomba-ahbot.service ]]; then
+    echo "  auction house bot: $(systemctl is-active goomba-ahbot 2>/dev/null || true) ($(mysql_root -N "$DB_NAME" -e "SELECT COUNT(*) FROM auction_house WHERE seller = 0 AND sale = 0" 2>/dev/null || echo '?') listings)"
+  fi
   if ((${#failed[@]})); then
     echo
     if [[ $EUID -eq 0 ]]; then
@@ -819,8 +975,9 @@ main() {
     backup-key) cmd_backup_key ;;
     gm) cmd_gm "$@" ;;
     zone-ip) cmd_zone_ip "$@" ;;
+    ahbot) cmd_ahbot "$@" ;;
     version|--version) cmd_version ;;
-    help|-h|--help) sed -n '2,21p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
+    help|-h|--help) sed -n '2,22p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
     *) die "unknown command '$cmd' (see: goomba help)" ;;
   esac
 }
