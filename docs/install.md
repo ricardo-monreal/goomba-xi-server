@@ -10,6 +10,19 @@ This guide takes you from an empty Proxmox host to players logging in on your ho
 
 Plan on an afternoon: most of the time is the server build (20–40 minutes) and copying the game client (about 15 GB).
 
+## Where you are
+
+Tick these off as you go; each line links to its part.
+
+| # | Step | Done when |
+| --- | --- | --- |
+| 1 | [Game server VM](#part-1-the-game-server-vm) | You can SSH into 10.2.5.64 |
+| 2 | [Game server install](#part-2-install-the-game-server) | `goomba status` shows 6 services `active`; `http://10.2.5.64` loads |
+| 3 | [File server LXC](#part-3-the-file-server-lxc) | `http://10.2.5.65/launcher/news.json` loads |
+| 3b | [Off-box backups](#off-box-backups-recommended) (optional) | `sudo goomba backup` ends with `ok copied to goomba-backup@10.2.5.65:.` |
+| 4 | [Client and launcher](client-and-launcher.md) | `http://10.2.5.65/launcher/client/manifest.json` loads; the website's download links work |
+| 5 | [First login](#part-5-first-login) | You are in game with GM rights |
+
 ## What you need
 
 - A Proxmox VE host with about 4 free cores, 10 GB of free RAM and 200 GB of free disk.
@@ -182,32 +195,7 @@ If it ends with `could not copy backups` instead:
 
 ## Part 4: The game client and the launcher
 
-Players install one program, the **Goomba XI launcher**, which downloads the game from your file server, keeps it updated and signs them in. You build two things, both described step by step in the [launcher README](https://github.com/ricardo-monreal/goomba-xi-launcher#readme):
-
-1. **The game client** (once, and again only when the game data changes): on the Windows PC, `tools/build-client.mjs` packs FFXI, PlayOnline, Ashita, xiloader and the Era-DATs into one folder, and `tools/make-manifest.mjs` turns it into a manifest plus compressed files. Copy the result to the file server:
-
-   ```powershell
-   scp -r .\publish\files goomba-admin@10.2.5.65:/srv/goomba/files/launcher/client/
-   scp .\publish\manifest.json goomba-admin@10.2.5.65:/srv/goomba/files/launcher/client/
-   ```
-
-2. **The launcher** (Windows installer and Linux AppImage): point it at your servers, then build it:
-
-   ```bash
-   node tools/configure.mjs --server 10.2.5.64 --files http://10.2.5.65
-   git commit -am "Point the launcher at my servers" && git tag v1.0.0 && git push origin main v1.0.0
-   ```
-
-   The tag starts the GitHub **release** workflow, which builds `GoombaXI-Setup-1.0.0.exe` and `GoombaXI-1.0.0-x86_64.AppImage`. Download them from the release and copy them to the file server under fixed names, so the website's download buttons always get the latest:
-
-   ```bash
-   scp GoombaXI-Setup-1.0.0.exe goomba-admin@10.2.5.65:/srv/goomba/files/launcher/GoombaXI-Setup.exe
-   scp GoombaXI-1.0.0-x86_64.AppImage goomba-admin@10.2.5.65:/srv/goomba/files/launcher/GoombaXI.AppImage
-   ```
-
-   (Local builds work too: `npm run dist` on Windows, `npm run dist:linux` on Linux.)
-
-The website's **Getting Started** page links to those two files.
+Players install one program, the **Goomba XI launcher**, which downloads the game from the file server and signs them in. You build the game client once on a Windows PC and let GitHub build the launcher. It has its own step-by-step page: **[client-and-launcher.md](client-and-launcher.md)**.
 
 ## Part 5: First login
 

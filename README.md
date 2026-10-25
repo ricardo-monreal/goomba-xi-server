@@ -59,7 +59,7 @@ curl -fsSL https://raw.githubusercontent.com/ricardo-monreal/goomba-xi-server/ma
 When both are up:
 
 1. Open `http://<server address>/register` and create your account.
-2. Build the client and the launcher ([goomba-xi-launcher](https://github.com/ricardo-monreal/goomba-xi-launcher)), sign in and create a character.
+2. Build the game client and the launcher: [docs/client-and-launcher.md](docs/client-and-launcher.md), step by step. Then sign in and create a character.
 3. Give it GM rights: `sudo goomba gm <your account> 5`.
 
 Secrets are generated during install and live only on the server: `/etc/goomba/server.env` (game database login) and `/etc/goomba/web.env` (website database login, session secret, optional SMTP for password-reset mail).
