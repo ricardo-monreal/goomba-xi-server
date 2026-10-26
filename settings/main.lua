@@ -67,7 +67,7 @@ xi.settings.main =
 
     -- Rates. EXP from kills is map.lua's EXP_RATE; this one covers EXP given by scripts
     -- (quest rewards, EXP scrolls). Keep the two equal.
-    EXP_RATE  = 2.000,
+    EXP_RATE  = 3.000,
     START_GIL = 10,
     ALL_MAPS  = 0,
 }

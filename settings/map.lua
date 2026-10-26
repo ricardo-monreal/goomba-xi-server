@@ -21,8 +21,8 @@ xi.settings.map =
     AUDIT_PLAYER_DBOX   = true,
     AUDIT_PLAYER_VENDOR = true,
 
-    -- Double EXP from kills (also capacity points). Keep main.lua's EXP_RATE the same.
-    EXP_RATE = 2.0,
+    -- Triple EXP from kills (also capacity points). Keep main.lua's EXP_RATE the same.
+    EXP_RATE = 3.0,
 
     -- Double the chance a synthesis raises crafting skill: 60% -> 100% below skill 50,
     -- 25% -> 50% from 50 up (halved when the synth breaks, as normal).

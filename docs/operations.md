@@ -48,7 +48,7 @@ Some common ones:
 
 | Setting | File | Goomba XI value |
 | --- | --- | --- |
-| `EXP_RATE` | `main.lua` and `map.lua` (keep equal) | 2.0 |
+| `EXP_RATE` | `main.lua` and `map.lua` (keep equal) | 3.0 |
 | `SKILLUP_AMOUNT_MULTIPLIER` | `map.lua` | 2 |
 | `CRAFT_CHANCE_MULTIPLIER` | `map.lua` | 2.0 |
 | `INITIAL_LEVEL_CAP`, `MAX_LEVEL` | `main.lua` | 50, 75 |
