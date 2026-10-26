@@ -33,4 +33,10 @@ xi.settings.map =
     -- (0.1 -> 0.3) and raises the most one skill-up can give from 0.5 to 0.9.
     -- Must be a whole number; 1 = retail.
     SKILLUP_AMOUNT_MULTIPLIER = 2,
+
+    -- Fishing (LandSandBoat ships with it off). FISHING_SKILL_MULTIPLIER doubles the chance
+    -- that a catch raises fishing skill (retail's 1.0 is very slow). Fish, items and bites
+    -- are unchanged. FISHING_ENABLE = false turns fishing and its quests off again.
+    FISHING_ENABLE           = true,
+    FISHING_SKILL_MULTIPLIER = 2.0,
 }
