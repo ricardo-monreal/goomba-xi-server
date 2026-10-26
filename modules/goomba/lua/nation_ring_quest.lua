@@ -1,5 +1,6 @@
 -----------------------------------
--- Goomba XI: "A Small Challenge" (nation ring quest)
+-- Goomba XI: "A Small <Nation> Challenge" (nation ring quest)
+-- e.g. "A Small Bastok Challenge"
 -----------------------------------
 -- On retail a new character only gets their nation's ring (San d'Orian, Bastokan or
 -- Windurstian Ring) when their race is native to the nation they start in. This quest lets
@@ -122,6 +123,10 @@ local function clearQuest(player)
     player:setCharVar(varKills .. 2, 0)
 end
 
+local function questName(info)
+    return string.format('A Small %s Challenge', info.nationName)
+end
+
 local function progressText(player, info)
     local parts = {}
     for i, area in ipairs(info.areas) do
@@ -149,7 +154,7 @@ local function showMenu(player, menu)
 end
 
 local function offer(player, npc, nation, info)
-    say(player, npc, 'Hello, adventurer! Are you up for a small challenge?')
+    say(player, npc, string.format('Hello, adventurer! Are you up for a small %s challenge?', info.nationName))
     say(player, npc, string.format(
         'Defeat %d monsters in %s and %d in %s, ones that are a real test for you: anything too weak to teach you a thing won\'t count.',
         killsPerArea, info.areas[1].name, killsPerArea, info.areas[2].name))
@@ -244,10 +249,10 @@ m:addOverride('xi.mob.onMobDeathEx', function(mob, player, isKiller, isWeaponSki
             if count < killsPerArea and player:checkKillCredit(mob) then
                 count = count + 1
                 player:setCharVar(varKills .. i, count)
-                notify(player, string.format('A Small Challenge: %s %d/%d.', area.name, count, killsPerArea))
+                notify(player, string.format('%s: %s %d/%d.', questName(info), area.name, count, killsPerArea))
 
                 if isComplete(player, info) then
-                    notify(player, string.format('A Small Challenge complete! Return to the %s in %s.', info.envoy.name, info.cityName))
+                    notify(player, string.format('%s complete! Return to the %s in %s.', questName(info), info.envoy.name, info.cityName))
                 end
             end
 
