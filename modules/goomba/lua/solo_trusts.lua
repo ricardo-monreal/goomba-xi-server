@@ -34,6 +34,27 @@ local settings =
         'AYAME',      -- Samurai: melee damage
         'SHANTOTTO',  -- Black Mage: magic damage
     },
+
+    -- Trusts nobody may call: their jobs (Geomancer, Rune Fencer, Dancer, Scholar) arrived after
+    -- the 75 era and bring spells and abilities the 2007 client doesn't know. Applies however the
+    -- trust was learned (quest, GM command). Remove a line to allow that trust again.
+    blockedTrusts =
+    {
+        'SAKURA',                -- Sakura (GEO)
+        'MOOGLE',                -- Moogle (GEO)
+        'STAR_SIBYL',            -- Star Sibyl (GEO)
+        'LILISETTE',             -- Lilisette (DNC)
+        'MUMOR',                 -- Mumor (DNC)
+        'UKA_TOTLIHN',           -- Uka Totlihn (DNC)
+        'KUYIN_HATHDENNA',       -- Kuyin Hathdenna (GEO)
+        'MAYAKOV',               -- Mayakov (DNC)
+        'ADELHEID',              -- Adelheid (SCH)
+        'AMCHUCHU',              -- Amchuchu (RUN)
+        'BRYGID',                -- Brygid (GEO)
+        'KUPOFRIED',             -- Kupofried (GEO)
+        'SYLVIE_UC',             -- Sylvie (UC) (GEO)
+        'LILISETTE_II',          -- Lilisette II (DNC)
+    },
 }
 
 local maxPartySize = 6
@@ -64,8 +85,28 @@ end)
 -- The same checks as retail's xi.trust.canCast, minus the Rhapsody key item limits and,
 -- with `everywhere`, the zone and battlefield bans. The rest stays: party leader or solo
 -- only, no enmity, no alliance (trusts only join a party), one of each trust.
+local blocked = nil -- spell id -> true, built on first use (xi.magic.spell is loaded by then)
+
+local function isBlocked(spellId)
+    if not blocked then
+        blocked = {}
+        for _, name in ipairs(settings.blockedTrusts) do
+            local id = xi.magic.spell[name]
+            if id then
+                blocked[id] = true
+            end
+        end
+    end
+
+    return blocked[spellId] == true
+end
+
 m:addOverride('xi.trust.canCast', function(caster, spell, notAllowedTrustIds)
     if xi.settings.main.ENABLE_TRUST_CASTING == 0 then
+        return xi.msg.basic.TRUST_NO_CAST_TRUST
+    end
+
+    if isBlocked(spell:getID()) then
         return xi.msg.basic.TRUST_NO_CAST_TRUST
     end
 

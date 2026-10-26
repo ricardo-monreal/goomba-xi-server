@@ -3,7 +3,8 @@
 -----------------------------------
 -- Opens up trusts this 75-era server can't otherwise give (their quests and ciphers belong to
 -- content that is turned off). Talk to the Trust Liaison in Lower Jeuno: trusts unlock in tiers
--- by the player's highest job level and are bought with conquest points through menus.
+-- by the player's highest job level and are bought with conquest points through menus,
+-- five to a page.
 --
 -- Conquest points are the player's own nation's points (the ones shown in the conquest menu).
 -- Edit the tiers or the NPC below, then: sudo goomba apply && sudo goomba restart game
@@ -13,39 +14,155 @@ require('scripts/zones/Lower_Jeuno/Zone')
 -----------------------------------
 local m = Module:new('goomba_trust_shop')
 
--- Each tier: the job level needed, the price in conquest points, and five trusts as
+-- Each tier: the job level needed, the price in conquest points, and its trusts as
 -- { name in xi.magic.spell (scripts/enum/magic.lua), name shown to players }.
--- 35 trusts in all, 75-era jobs only.
+-- Every trust LandSandBoat implements, in the order they came to retail, except the five
+-- starter trusts (solo_trusts.lua gives those to everyone) and the blocked Geomancer, Rune
+-- Fencer, Dancer and Scholar trusts (solo_trusts.lua, blockedTrusts).
 local tiers =
 {
     {
         level = 20, cost = 1000,
-        trusts = { { 'ZEID', 'Zeid' }, { 'LION', 'Lion' }, { 'TENZEN', 'Tenzen' }, { 'MIHLI_ALIAPOH', 'Mihli Aliapoh' }, { 'VALAINERAL', 'Valaineral' } },
+        trusts =
+        {
+            { 'NANAA_MIHGO', "Nanaa Mihgo" }, -- THF
+            { 'CURILLA', "Curilla" }, -- PLD
+            { 'VOLKER', "Volker" }, -- WAR
+            { 'AJIDO_MARUJIDO', "Ajido-Marujido" }, -- BLM
+            { 'TRION', "Trion" }, -- PLD
+            { 'ZEID', "Zeid" }, -- DRK
+            { 'LION', "Lion" }, -- THF
+            { 'TENZEN', "Tenzen" }, -- SAM
+            { 'MIHLI_ALIAPOH', "Mihli Aliapoh" }, -- WHM
+            { 'VALAINERAL', "Valaineral" }, -- PLD
+            { 'JOACHIM', "Joachim" }, -- BRD
+            { 'NAJA_SALAHEEM', "Naja Salaheem" }, -- MNK
+            { 'PRISHE', "Prishe" }, -- MNK
+            { 'ULMIA', "Ulmia" }, -- BRD
+            { 'SHIKAREE_Z', "Shikaree Z" }, -- DRG
+        },
     },
     {
         level = 30, cost = 1500,
-        trusts = { { 'NAJA_SALAHEEM', 'Naja Salaheem' }, { 'JOACHIM', 'Joachim' }, { 'RAINEMARD', 'Rainemard' }, { 'GADALAR', 'Gadalar' }, { 'NAJELITH', 'Najelith' } },
+        trusts =
+        {
+            { 'CHERUKIKI', "Cherukiki" }, -- WHM
+            { 'IRON_EATER', "Iron Eater" }, -- WAR
+            { 'GESSHO', "Gessho" }, -- NIN
+            { 'GADALAR', "Gadalar" }, -- BLM
+            { 'RAINEMARD', "Rainemard" }, -- RDM
+            { 'INGRID', "Ingrid" }, -- WHM
+            { 'LEHKO_HABHOKA', "Lehko Habhoka" }, -- THF
+            { 'NASHMEIRA', "Nashmeira" }, -- PUP
+            { 'ZAZARG', "Zazarg" }, -- MNK
+            { 'OVJANG', "Ovjang" }, -- RDM
+            { 'MNEJING', "Mnejing" }, -- PLD
+            { 'LUZAF', "Luzaf" }, -- COR
+            { 'NAJELITH', "Najelith" }, -- RNG
+            { 'ALDO', "Aldo" }, -- THF
+            { 'FABLINIX', "Fablinix" }, -- THF
+        },
     },
     {
         level = 40, cost = 2000,
-        trusts = { { 'LUZAF', 'Luzaf' }, { 'GESSHO', 'Gessho' }, { 'ZAZARG', 'Zazarg' }, { 'LEHKO_HABHOKA', 'Lehko Habhoka' }, { 'KARAHA_BARUHA', 'Karaha-Baruha' } },
+        trusts =
+        {
+            { 'MAAT', "Maat" }, -- MNK
+            { 'DOMINA_SHANTOTTO', "Domina Shantotto" }, -- BLM
+            { 'KARAHA_BARUHA', "Karaha-Baruha" }, -- WHM
+            { 'CID', "Cid" }, -- WAR
+            { 'GILGAMESH', "Gilgamesh" }, -- SAM
+            { 'AREUHAT', "Areuhat" }, -- WAR
+            { 'SEMIH_LAFIHNA', "Semih Lafihna" }, -- RNG
+            { 'ELIVIRA', "Elivira" }, -- RNG
+            { 'NOILLURIE', "Noillurie" }, -- SAM
+            { 'LHU_MHAKARACCA', "Lhu Mhakaracca" }, -- BST
+            { 'FERREOUS_COFFIN', "Ferreous Coffin" }, -- WHM
+            { 'KLARA', "Klara" }, -- WAR
+            { 'ROMAA_MIHGO', "Romaa Mihgo" }, -- THF
+            { 'RAHAL', "Rahal" }, -- PLD
+            { 'KORU_MORU', "Koru-Moru" }, -- RDM
+        },
     },
     {
         level = 50, cost = 2500,
-        trusts = { { 'LILISETTE', 'Lilisette' }, { 'AREUHAT', 'Areuhat' }, { 'ELIVIRA', 'Elivira' }, { 'NOILLURIE', 'Noillurie' }, { 'RAHAL', 'Rahal' } },
+        trusts =
+        {
+            { 'PIEUJE_UC', "Pieuje (UC)" }, -- WHM
+            { 'INVINCIBLE_SHIELD_UC', "Invincible Shield (UC)" }, -- WAR
+            { 'APURURU_UC', "Apururu (UC)" }, -- WHM
+            { 'JAKOH_UC', "Jakoh Wahcondalo (UC)" }, -- THF
+            { 'FLAVIRIA_UC', "Flaviria (UC)" }, -- DRG
+            { 'BABBAN', "Babban" }, -- MNK
+            { 'ABENZIO', "Abenzio" }, -- MNK
+            { 'RUGHADJEEN', "Rughadjeen" }, -- PLD
+            { 'KUKKI_CHEBUKKI', "Kukki-Chebukki" }, -- BLM
+            { 'MARGRET', "Margret" }, -- RNG
+            { 'CHACHAROON', "Chacharoon" }, -- THF
+            { 'LHE_LHANGAVO', "Lhe Lhangavo" }, -- MNK
+            { 'ARCIELA', "Arciela" }, -- RDM
+            { 'QULTADA', "Qultada" }, -- COR
+            { 'MILDAURION', "Mildaurion" }, -- PLD
+        },
     },
     {
         level = 60, cost = 3000,
-        trusts = { { 'CID', 'Cid' }, { 'FABLINIX', 'Fablinix' }, { 'ADELHEID', 'Adelheid' }, { 'KORU_MORU', 'Koru-Moru' }, { 'FERREOUS_COFFIN', 'Ferreous Coffin' } },
+        trusts =
+        {
+            { 'HALVER', "Halver" }, -- PLD
+            { 'RONGELOUTS', "Rongelouts" }, -- WAR
+            { 'LEONOYNE', "Leonoyne" }, -- BLM
+            { 'MAXIMILIAN', "Maximilian" }, -- THF
+            { 'KAYEEL_PAYEEL', "Kayeel-Payeel" }, -- BLM
+            { 'ROBEL_AKBEL', "Robel-Akbel" }, -- BLM
+            { 'SELHTEUS', "Selh'teus" }, -- PLD
+            { 'YORAN_ORAN_UC', "Yoran-Oran (UC)" }, -- WHM
+            { 'ABQUHBAH', "Abquhbah" }, -- WAR
+            { 'BALAMOR', "Balamor" }, -- DRK
+            { 'AUGUST', "August" }, -- PLD
+            { 'ROSULATIA', "Rosulatia" }, -- BLM
+            { 'TEODOR', "Teodor" }, -- BLM
+            { 'ULLEGORE', "Ullegore" }, -- BLM
+            { 'MAKKI_CHEBUKKI', "Makki-Chebukki" }, -- RNG
+        },
     },
     {
         level = 70, cost = 4000,
-        trusts = { { 'GILGAMESH', 'Gilgamesh' }, { 'DOMINA_SHANTOTTO', 'Domina Shantotto' }, { 'MUMOR', 'Mumor' }, { 'QULTADA', 'Qultada' }, { 'ROMAA_MIHGO', 'Romaa Mihgo' } },
+        trusts =
+        {
+            { 'KING_OF_HEARTS', "King of Hearts" }, -- RDM
+            { 'MORIMAR', "Morimar" }, -- BST
+            { 'DARRCUILN', "Darrcuiln" }, -- WAR
+            { 'IROHA', "Iroha" }, -- SAM
+            { 'YGNAS', "Ygnas" }, -- WHM
+            { 'MONBERAUX', "Monberaux" }, -- PLD
+            { 'MATSUI_P', "Matsui-P" }, -- NIN
+            { 'EXCENMILLE_S', "Excenmille [S]" }, -- WAR
+            { 'AYAME_UC', "Ayame (UC)" }, -- SAM
+            { 'MAAT_UC', "Maat (UC)" }, -- MNK
+            { 'ALDO_UC', "Aldo (UC)" }, -- THF
+            { 'NAJA_UC', "Naja Salaheem (UC)" }, -- THF
+        },
     },
     {
         level = 75, cost = 5000,
-        trusts = { -- the Ark Angels
-            { 'AAHM', 'Ark Angel HM' }, { 'AAEV', 'Ark Angel EV' }, { 'AAMR', 'Ark Angel MR' }, { 'AATT', 'Ark Angel TT' }, { 'AAGK', 'Ark Angel GK' },
+        trusts =
+        {
+            { 'AAHM', "Ark Angel HM" }, -- WAR
+            { 'AAEV', "Ark Angel EV" }, -- PLD
+            { 'AAMR', "Ark Angel MR" }, -- BST
+            { 'AATT', "Ark Angel TT" }, -- BLM
+            { 'AAGK', "Ark Angel GK" }, -- SAM
+            { 'LION_II', "Lion II" }, -- THF
+            { 'ZEID_II', "Zeid II" }, -- DRK
+            { 'PRISHE_II', "Prishe II" }, -- WHM
+            { 'NASHMEIRA_II', "Nashmeira II" }, -- WHM
+            { 'TENZEN_II', "Tenzen II" }, -- SAM
+            { 'MUMOR_II', "Mumor II" }, -- BLM
+            { 'INGRID_II', "Ingrid II" }, -- WHM
+            { 'ARCIELA_II', "Arciela II" }, -- RDM
+            { 'IROHA_II', "Iroha II" }, -- SAM
+            { 'SHANTOTTO_II', "Shantotto II" }, -- BLM
         },
     },
 }
@@ -150,43 +267,57 @@ local function buy(player, npc, tier, trust)
     say(player, npc, string.format('You learned Trust: %s. %s conquest points left.', trust.name, formatNumber(player:getCP())))
 end
 
-local function confirm(player, npc, tierIndex, trust)
+local function confirm(player, npc, tierIndex, trust, page)
     local tier = tiers[tierIndex]
     showMenu(player, {
         title   = string.format('%s for %s conquest points?', trust.name, formatNumber(tier.cost)),
         options =
         {
             { 'Buy', function(playerArg) buy(playerArg, npc, tier, trust) end },
-            { 'Back', function(playerArg) showTier(playerArg, npc, tierIndex) end },
+            { 'Back', function(playerArg) showTier(playerArg, npc, tierIndex, page) end },
         },
     })
 end
 
-showTier = function(player, npc, tierIndex)
+local trustsPerPage = 5 -- the client shows up to 7 options: 5 trusts, More, Back
+
+showTier = function(player, npc, tierIndex, page)
+    page          = page or 1
     local tier    = tiers[tierIndex]
+    local pages   = math.max(1, math.ceil(#tier.resolved / trustsPerPage))
+    local first   = (page - 1) * trustsPerPage + 1
     local options = {}
 
-    for _, trust in ipairs(tier.resolved) do
+    for i = first, math.min(#tier.resolved, first + trustsPerPage - 1) do
+        local trust = tier.resolved[i]
         if player:hasSpell(trust.spellId) then
             table.insert(options, {
                 trust.name .. ' (owned)',
                 function(playerArg)
                     say(playerArg, npc, string.format('You already know %s.', trust.name))
-                    showTier(playerArg, npc, tierIndex)
+                    showTier(playerArg, npc, tierIndex, page)
                 end,
             })
         else
             table.insert(options, {
                 trust.name,
-                function(playerArg) confirm(playerArg, npc, tierIndex, trust) end,
+                function(playerArg) confirm(playerArg, npc, tierIndex, trust, page) end,
             })
         end
     end
 
-    table.insert(options, { 'Back', function(playerArg) showTiers(playerArg, npc, math.floor((tierIndex - 1) / perPage) + 1) end })
+    if page < pages then
+        table.insert(options, { 'More', function(playerArg) showTier(playerArg, npc, tierIndex, page + 1) end })
+    end
+
+    if page > 1 then
+        table.insert(options, { 'Back', function(playerArg) showTier(playerArg, npc, tierIndex, page - 1) end })
+    else
+        table.insert(options, { 'Back', function(playerArg) showTiers(playerArg, npc, math.floor((tierIndex - 1) / perPage) + 1) end })
+    end
 
     showMenu(player, {
-        title   = string.format('Level %d trusts, %s conquest points each', tier.level, formatNumber(tier.cost)),
+        title   = string.format('Level %d trusts, %s CP each (%d/%d)', tier.level, formatNumber(tier.cost), page, pages),
         options = options,
     })
 end
