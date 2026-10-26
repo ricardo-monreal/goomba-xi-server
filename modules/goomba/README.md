@@ -16,7 +16,10 @@ original behaviour. `lua/welcome.lua` is a small working example; `lua/solo_trus
 (5 trusts, retail zone and battlefield rules, starter party on login, Geomancer/Rune Fencer/Dancer/Scholar trusts
 blocked) is a larger one with options at the top. `lua/trust_shop.lua` adds the Trust Liaison NPC in
 Lower Jeuno: every other trust LandSandBoat has (102) in tiers that open at job level 20, 30, 40,
-50, 60, 70 and 75, bought with conquest points through menus. LandSandBoat's own modules
+50, 60, 70 and 75, bought with conquest points through menus. `lua/nation_ring_quest.lua` is a
+quest, "A Small Challenge": an envoy beside the city gate guard in Southern San d'Oria, Bastok
+Markets and Windurst Woods gives any citizen their nation's ring, whatever their race, for
+defeating 10 monsters that give experience in each of the two areas outside the city. LandSandBoat's own modules
 (`/opt/goomba/server/modules/custom`, `era`, `example`) are good references.
 
 `sql/accounts_login_tokens.sql` is the table behind the launcher's sign-in (see `patches/` at the
