@@ -115,7 +115,7 @@ Moving to a newer LandSandBoat commit, and what to do if the launch-token patch 
 
 Goomba XI matches the Era-DATs the launcher ships: the original game through Treasures of Aht Urhgan, Level 75 cap unlocked through Maat's quests, and later systems (Records of Eminence, Field/Grounds manuals, home point teleports, Mog Garden, …) turned off. See `settings/main.lua` and `GOOMBA_ERA_MODULES`.
 
-It is meant to be playable solo or in a small group: trusts are on, up to five at once and allowed everywhere (`modules/goomba/lua/solo_trusts.lua`), the Trust Liaison in Lower Jeuno sells 102 more for conquest points (Geomancer, Rune Fencer, Dancer and Scholar trusts are blocked), and EXP and skill-up rates are raised (`settings/main.lua`, `settings/map.lua`). An optional Auction House bot keeps the AH stocked and buys what players list: `sudo goomba ahbot on` ([docs/auction-house.md](docs/auction-house.md)).
+It is meant to be playable solo or in a small group: trusts are on, up to five at once under retail's zone and battlefield rules (`modules/goomba/lua/solo_trusts.lua`), the Trust Liaison in Lower Jeuno sells 102 more for conquest points (Geomancer, Rune Fencer, Dancer and Scholar trusts are blocked), and EXP and skill-up rates are raised (`settings/main.lua`, `settings/map.lua`). An optional Auction House bot keeps the AH stocked and buys what players list: `sudo goomba ahbot on` ([docs/auction-house.md](docs/auction-house.md)).
 
 ## Without GitHub
 

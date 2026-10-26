@@ -21,7 +21,7 @@ local settings =
 
     -- Allow trusts in every zone and every battlefield, including Limit Break 5 fights
     -- and battles marked "no trusts". false = retail zone and battlefield rules.
-    everywhere = true,
+    everywhere = false,
 
     -- Trusts every character knows. Taught on login, so existing characters get them too.
     -- Their trust quests can still be done; learning a known trust again does nothing.
