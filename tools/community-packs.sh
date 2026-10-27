@@ -9,6 +9,7 @@
 #   XiView (KenshiDRK)           → packs/xiview-standard-<date>.zip       (4:3 / standard UI)
 #                                  packs/xiview-widescreen-<date>.zip     (16:9 / 16:10 UI)
 #   targetlines (Jyouya)         → addons/targetlines-<version>.zip      (Ashita addon)
+#   mobdb (ThornyFFXI)           → addons/mobdb-<version>.zip            (Ashita addon)
 #
 # then rebuilds launcher/pivot.json and launcher/addons.json with the launcher repository's
 # tools/make-catalogs.mjs and file-server/catalog-sources.json (names, descriptions, credits).
@@ -121,13 +122,25 @@ pack "$stage" "$FILES/addons" "targetlines-$ver.zip"
 rm -rf "$stage"
 TL_VER="$ver"
 
+say "mobdb"
+mdb="$(fetch ThornyFFXI/mobdb)"
+ver="$(sed -n "s/^addon.version *= *'\([^']*\)'.*/\1/p" "$mdb/mobdb.lua" | head -1)"
+ver="${ver:-$(commit_date "$mdb")}"
+# The zip holds the addon folder itself: mobdb/mobdb.lua, data/, icons/, ...
+stage="$(mktemp -d)"
+cp -r "$mdb" "$stage/mobdb"
+rm -rf "$stage/mobdb/.git"
+pack "$stage" "$FILES/addons" "mobdb-$ver.zip"
+rm -rf "$stage"
+MOBDB_VER="$ver"
+
 say "Catalogs (pivot.json, addons.json)"
 launcher="$(fetch "${LAUNCHER_REPO#https://github.com/}")"
 # catalog-sources.json lists every pack and addon the launcher can offer; point the entries for
 # these three at the zips just built (versions are dates from their repositories).
-node - "$launcher/file-server/catalog-sources.json" "$SRC/catalog-sources.json" "$MAPS_VER" "$XIVIEW_VER" "$TL_VER" <<'JS'
+node - "$launcher/file-server/catalog-sources.json" "$SRC/catalog-sources.json" "$MAPS_VER" "$XIVIEW_VER" "$TL_VER" "$MOBDB_VER" <<'JS'
 const fs = require('fs')
-const [src, out, maps, xiview, tl] = process.argv.slice(2)
+const [src, out, maps, xiview, tl, mobdb] = process.argv.slice(2)
 const s = JSON.parse(fs.readFileSync(src, 'utf8'))
 const set = (list, id, version, file) => {
   const e = list.find((x) => (x.id ?? x.name) === id)
@@ -138,6 +151,7 @@ set(s.packs, 'combined-maps-hd', maps, `packs/combined-maps-hd-${maps}.zip`)
 set(s.packs, 'xiview-standard', xiview, `packs/xiview-standard-${xiview}.zip`)
 set(s.packs, 'xiview-widescreen', xiview, `packs/xiview-widescreen-${xiview}.zip`)
 set(s.addons, 'TargetLines', tl, `addons/targetlines-${tl}.zip`)
+set(s.addons, 'MobDB', mobdb, `addons/mobdb-${mobdb}.zip`)
 fs.writeFileSync(out, JSON.stringify(s, null, 2) + '\n')
 JS
 echo "  (other entries in catalog-sources.json without a zip here are reported as missing and left out; that is expected)"
@@ -146,4 +160,4 @@ echo "  (other entries in catalog-sources.json without a zip here are reported a
 chown -R "$OWNER:$OWNER" "$FILES/packs" "$FILES/addons" "$FILES/pivot.json" "$FILES/addons.json" 2>/dev/null || true
 
 printf '\n\e[1;32mDone.\e[0m Check: %s/launcher/pivot.json and %s/launcher/addons.json\n' "$BASE_URL" "$BASE_URL"
-echo "In the launcher: Addons → Pivot for the map and UI packs, Addons → Catalog for TargetLines."
+echo "In the launcher: Addons → Pivot for the map and UI packs, Addons → Catalog for TargetLines and MobDB."
