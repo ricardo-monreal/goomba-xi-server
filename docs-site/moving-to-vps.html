@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opening Goomba XI to the internet or moving it to a VPS · Goomba XI docs</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" hidden>
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-label="Menu"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◆</span> Goomba XI <small>docs</small></a>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <a class="nav-link nav-home" href="index.html">Home</a>
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link" href="features.html">Gameplay features</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link" href="updating.html">Updating</a>
+      <a class="nav-link" href="file-server.html">File server</a>
+      <a class="nav-link" href="client-and-launcher.html">Client & launcher</a>
+      <a class="nav-link" href="auction-house.html">Auction House</a>
+      <a class="nav-link active" href="moving-to-vps.html">Moving to a VPS</a>
+      <a class="nav-link" href="without-github.html">Without GitHub</a>
+    <div class="nav-foot">Offline copy · <a href="https://github.com/ricardo-monreal/goomba-xi-server" target="_blank" rel="noopener noreferrer">source</a></div>
+  </nav>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+  <main class="content">
+    <article>
+      <h1 class="page-title">Opening Goomba XI to the internet or moving it to a VPS</h1>
+<p>Goomba XI starts on a home network. Two ways to let players in from outside, from least to most work:</p>
+<ul>
+<li><strong>A. Keep it at home, forward ports</strong> from your router to the game server VM.</li>
+<li><strong>B. Move it to a VPS</strong> (any Ubuntu 26.04 virtual server with 4 GB of RAM or more; 8 GB for building).</li>
+</ul>
+<p>Either way you will want a domain name (so the launcher isn&#39;t tied to an IP address) and HTTPS for the website.</p>
+<h2 id="a-port-forwarding-from-home">A. Port forwarding from home</h2>
+<ol>
+<li><p>Give the game server a fixed LAN address (it already has one if you followed the install guide).</p>
+</li>
+<li><p>On the router, forward these to it: TCP 80, 443, 54001, 54002, 54230, 54231, 51220, 51240 and UDP 54230. Forward TCP 80 on a second public port, or use a subdomain on a different IP, if the file server should be reachable too; or move the client downloads to object storage (step 4 below).</p>
+</li>
+<li><p>Point a domain at your public IP (<code>A</code> records for <code>goomba-xi.example</code> and <code>www</code>), or use a dynamic DNS name if your IP changes.</p>
+</li>
+<li><p>On the game server, set in <code>/etc/goomba/goomba.conf</code>:</p>
+<pre><code class="language-bash">GOOMBA_ZONE_IP=&quot;&lt;your public IP&gt;&quot;
+GOOMBA_DOMAIN=&quot;goomba-xi.example&quot;
+GOOMBA_ACME_EMAIL=&quot;you@example.com&quot;
+</code></pre>
+<p>then:</p>
+<pre><code class="language-bash">sudo goomba zone-ip &lt;your public IP&gt;
+sudo goomba web-update        # nginx for the domain, Let&#39;s Encrypt certificate, new SITE_URL
+</code></pre>
+</li>
+<li><p>Players on your own LAN: most routers support &quot;hairpin NAT&quot; (reaching your public IP from inside). If yours doesn&#39;t, set <code>&quot;hairpin&quot;: true</code> in the launcher&#39;s <code>launcher.config.json</code> and see <code>src/shared/types.ts</code> there.</p>
+</li>
+<li><p>Rebuild the launcher for the domain and publish it:</p>
+<pre><code class="language-bash">node tools/configure.mjs --server goomba-xi.example --website https://goomba-xi.example --files https://files.goomba-xi.example
+</code></pre>
+</li>
+</ol>
+<h2 id="b-moving-to-a-vps">B. Moving to a VPS</h2>
+<ol>
+<li><p><strong>Install fresh on the VPS</strong> with the normal one-liner. Answer the questions with the VPS&#39;s public IP, your file server URL and your domain.</p>
+</li>
+<li><p><strong>Bring the data over.</strong> On the home server: <code>sudo goomba backup</code>. Copy the three newest files from <code>/opt/goomba/backups</code> (<code>xidb-…</code>, <code>goomba_web-…</code>, <code>etc-goomba-…</code>) to the VPS&#39;s <code>/opt/goomba/backups</code>.</p>
+</li>
+<li><p><strong>On the VPS</strong>, restore both databases:</p>
+<pre><code class="language-bash">sudo goomba restore xidb-&lt;date&gt;.sql.gz
+sudo goomba restore goomba_web-&lt;date&gt;.sql.gz
+</code></pre>
+<p>Accounts, characters and website data come across; players sign in to the website and launcher once more because the VPS has its own new secrets. (The <code>etc-goomba-…</code> file is there for reference: compare its <code>goomba.conf</code> with the new one for any settings you changed.)</p>
+</li>
+<li><p><strong>Downloads.</strong> Either set up a second small VPS with <code>install.sh --file-server</code>, or put <code>/srv/goomba/files</code> in object storage (Cloudflare R2 has no egress fees, which matters when every new player downloads 15 GB). Set <code>GOOMBA_FILES_URL</code> and rebuild the launcher.</p>
+</li>
+<li><p><strong>DNS.</strong> Point the domain at the VPS, rebuild and publish the launcher with the new addresses, and post the new download link.</p>
+</li>
+<li><p><strong>Firewall.</strong> <code>goomba install</code> already configured <code>ufw</code>. Many VPS providers also have their own firewall in their dashboard: open the same ports there.</p>
+</li>
+</ol>
+<h2 id="hardening-checklist-for-a-public-server">Hardening checklist for a public server</h2>
+<ul>
+<li>SSH: keys only (<code>PasswordAuthentication no</code> in <code>/etc/ssh/sshd_config</code>), or limit it to your IP.</li>
+<li>Keep Ubuntu updated: <code>sudo apt install unattended-upgrades</code>.</li>
+<li>The database, the world API (8088) and the website&#39;s own port (3000) are bound to localhost by default; keep them that way.</li>
+<li>The website rate-limits sign-in and registration (10 per minute per address, in <code>nginx/goomba-web.conf</code>).</li>
+<li>Off-box backups (<code>BACKUP_REMOTE</code>) to a machine that isn&#39;t the VPS.</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+</body>
+</html>

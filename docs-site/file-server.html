@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The file server · Goomba XI docs</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" hidden>
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-label="Menu"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◆</span> Goomba XI <small>docs</small></a>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <a class="nav-link nav-home" href="index.html">Home</a>
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link" href="features.html">Gameplay features</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link" href="updating.html">Updating</a>
+      <a class="nav-link active" href="file-server.html">File server</a>
+      <a class="nav-link" href="client-and-launcher.html">Client & launcher</a>
+      <a class="nav-link" href="auction-house.html">Auction House</a>
+      <a class="nav-link" href="moving-to-vps.html">Moving to a VPS</a>
+      <a class="nav-link" href="without-github.html">Without GitHub</a>
+    <div class="nav-foot">Offline copy · <a href="https://github.com/ricardo-monreal/goomba-xi-server" target="_blank" rel="noopener noreferrer">source</a></div>
+  </nav>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+  <main class="content">
+    <article>
+      <h1 class="page-title">The file server</h1>
+<p>Downloads come from a separate machine so big transfers never compete with the game. For Goomba XI that is a <strong>Debian 13 LXC</strong> on the same Proxmox host, set up by <code>tools/setup-file-server.sh</code> (<a href="install.html">install.md</a>, part 3). Any static web host works the same way later (nginx on a VPS, or object storage such as Cloudflare R2 or Backblaze B2 behind a CDN).</p>
+<h2 id="layout">Layout</h2>
+<pre><code>/srv/goomba/
+  files/                              served at http://&lt;file server&gt;/
+    launcher/
+      GoombaXI-Setup.exe              latest Windows launcher (fixed name; the website links to it)
+      GoombaXI.AppImage               latest Linux launcher
+      releases/                       older launcher versions, kept for reference
+      news.json                       launcher news
+      client/manifest.json            game client manifest   } from tools/make-manifest.mjs
+      client/files/ab/abcdef….gz      game client blobs      } in the launcher repository
+      addons.json, addons/*.zip       optional addons and plugins   } from tools/make-catalogs.mjs
+      pivot.json,  packs/*.zip        optional HD packs (XIPivot)   }
+      runtime/                        optional: GE-Proton, umu, winetricks for Linux players
+    icons/
+      items/&lt;id&gt;.png                  item icons for the website (website: scripts/import-items.mjs)
+  backups/data/                       copies of the game server&#39;s backups (BACKUP_REMOTE)
+/srv/git/                             optional Git mirror (tools/git-mirror.sh)
+</code></pre>
+<p>The paths match <code>launcher.config.json</code> in the launcher repository and <code>GOOMBA_FILES_URL</code> on the game server. Size: about 15 GB for the client, plus whatever HD packs you host, plus backups (a few MB a day).</p>
+<h2 id="the-setup-script">The setup script</h2>
+<pre><code class="language-bash">sudo /opt/goomba-xi-server/tools/setup-file-server.sh [--website URL] [--owner USER] [--backup-key &#39;KEY&#39;] [--git-mirror]
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--website</code></td>
+<td>The website&#39;s URL; it is allowed to load item icons and JSON from here (CORS).</td>
+</tr>
+<tr>
+<td><code>--owner</code></td>
+<td>The user who uploads files (owns <code>/srv/goomba/files</code>).</td>
+</tr>
+<tr>
+<td><code>--backup-key</code></td>
+<td>Authorizes the game server&#39;s backup key (<code>sudo goomba backup-key</code> on the game server prints the full command). The key can only run rsync inside <code>/srv/goomba/backups/data</code>.</td>
+</tr>
+<tr>
+<td><code>--git-mirror</code></td>
+<td>Also serves <code>/srv/git</code> read-only at <code>/git/</code> (see <a href="without-github.html">without-github.md</a>).</td>
+</tr>
+</tbody></table>
+<p>Options are remembered in <code>/etc/goomba/files.conf</code>, so running it again later (to add a key, or after a Debian upgrade) only needs the options that change. The nginx site is <code>/etc/nginx/sites-available/goomba-files.conf</code>; re-run the script instead of editing it.</p>
+<p>What nginx does: client blobs are cached forever (they are content-addressed and never change), JSON files are always revalidated, and range requests let the launcher resume interrupted downloads.</p>
+<h2 id="publishing-order">Publishing order</h2>
+<p>Upload files before the files that point at them, so players never see a manifest whose files aren&#39;t there yet:</p>
+<ol>
+<li><code>client/files/…</code>, then <code>client/manifest.json</code></li>
+<li><code>addons/*.zip</code>, <code>packs/*.zip</code>, then <code>addons.json</code>, <code>pivot.json</code></li>
+<li>A new launcher: keep the versioned file in <code>releases/</code>, then copy it over the fixed name</li>
+</ol>
+<p>From the PC that built the client:</p>
+<pre><code class="language-bash">rsync -av publish/files/ goomba-admin@10.2.5.65:/srv/goomba/files/launcher/client/files/
+rsync -av publish/manifest.json goomba-admin@10.2.5.65:/srv/goomba/files/launcher/client/
+</code></pre>
+<p>On Windows without rsync, <code>scp -r</code> works the same way (or WinSCP).</p>
+<h2 id="community-packs-and-addons-maps-xi-view-targetlines-mobdb">Community packs and addons (maps, XI View, TargetLines, MobDB)</h2>
+<p>The launcher&#39;s <strong>Addons</strong> screen offers optional extras from the file server: <strong>Pivot</strong> packs that replace game graphics without touching game files (each category is pick-one), and <strong>Catalog</strong> addons from the approved list. One script builds these community ones straight from their GitHub repositories and publishes the catalogs:</p>
+<table>
+<thead>
+<tr>
+<th>Extra</th>
+<th>From</th>
+<th>Shown in the launcher as</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Combined maps, 1024x1024</td>
+<td><a href="https://github.com/CriticalXI/XICombinedMaps" target="_blank" rel="noopener noreferrer">CriticalXI/XICombinedMaps</a></td>
+<td>Pivot → Maps → <strong>Combined Maps: Basic</strong></td>
+</tr>
+<tr>
+<td>Combined maps, 2048x2048</td>
+<td>same</td>
+<td>Pivot → Maps → <strong>Combined Maps: HD</strong></td>
+</tr>
+<tr>
+<td>XI View UI, standard</td>
+<td><a href="https://github.com/KenshiDRK/XiView" target="_blank" rel="noopener noreferrer">KenshiDRK/XiView</a></td>
+<td>Pivot → UI → <strong>XI View: Standard</strong></td>
+</tr>
+<tr>
+<td>XI View UI, widescreen</td>
+<td>same</td>
+<td>Pivot → UI → <strong>XI View: Widescreen</strong></td>
+</tr>
+<tr>
+<td>TargetLines addon</td>
+<td><a href="https://github.com/Jyouya/targetlines" target="_blank" rel="noopener noreferrer">Jyouya/targetlines</a></td>
+<td>Catalog → <strong>TargetLines</strong></td>
+</tr>
+<tr>
+<td>MobDB addon</td>
+<td><a href="https://github.com/ThornyFFXI/mobdb" target="_blank" rel="noopener noreferrer">ThornyFFXI/mobdb</a></td>
+<td>Catalog → <strong>MobDB</strong></td>
+</tr>
+</tbody></table>
+<p><strong>Where: the file server (10.2.5.65), as root</strong> — in the LXC&#39;s console in Proxmox, or <code>pct enter &lt;id&gt;</code> on the Proxmox host. Not on the game server: there the script stops with &quot;This is the game server&quot;.</p>
+<pre><code class="language-bash">cd /opt/goomba-xi-server &amp;&amp; git pull
+bash tools/community-packs.sh --base-url http://10.2.5.65
+</code></pre>
+<p>The first run downloads about 2.3 GB (the maps) and takes a while to zip them; it ends with <strong>Done.</strong> and these files:</p>
+<pre><code>/srv/goomba/files/launcher/
+  packs/combined-maps-basic-&lt;date&gt;.zip     ~250 MB
+  packs/combined-maps-hd-&lt;date&gt;.zip        ~800 MB
+  packs/xiview-standard-&lt;date&gt;.zip         ~3 MB
+  packs/xiview-widescreen-&lt;date&gt;.zip       ~3 MB
+  addons/targetlines-&lt;version&gt;.zip
+  addons/mobdb-&lt;version&gt;.zip
+  pivot.json, addons.json                  the catalogs the launcher reads
+</code></pre>
+<p>Check <code>http://10.2.5.65/launcher/pivot.json</code> in a browser. Launchers see the new entries the next time the Addons screen opens; nothing needs rebuilding.</p>
+<p>Run the script again whenever you want the latest versions: it updates the repositories, rebuilds only what changed, and moves old zips to <code>packs/old/</code> and <code>addons/old/</code>.</p>
+<p>Notes:</p>
+<ul>
+<li>The script also lists the other entries in the launcher&#39;s <code>file-server/catalog-sources.json</code> (NextHD, NextLore, Normal Maps - Labeled, …). Their zips aren&#39;t built by it, so it reports them as missing and leaves them out; put such a zip in <code>packs/</code> under the name the sources file gives and run the script again to offer it.</li>
+<li>None of these packs touch the Era-DATs (no shared files), so they combine safely with the era text.</li>
+<li>These are other people&#39;s work, credited in the launcher with links to their pages. They&#39;re shared freely by their authors; ask before hosting them anywhere public.</li>
+<li>To give every player TargetLines by default, add <code>&quot;targetlines&quot;</code> to <code>defaultAddons</code> in the launcher&#39;s <code>launcher.config.json</code> and publish a new launcher.</li>
+</ul>
+<h2 id="launcher-news">Launcher news</h2>
+<p><code>launcher/news.json</code> is a list of posts shown on the launcher&#39;s Home tab:</p>
+<pre><code class="language-json">[
+  { &quot;title&quot;: &quot;Harvest Festival&quot;, &quot;date&quot;: &quot;Oct 31, 2026&quot;, &quot;body&quot;: &quot;Pumpkins have appeared in all three nations.&quot;, &quot;url&quot;: &quot;http://10.2.5.64/blog/harvest-festival&quot; }
+]
+</code></pre>
+<p>Edit it in place; launchers pick it up on their next start.</p>
+<h2 id="storage-and-backups-of-the-lxc">Storage and backups of the LXC</h2>
+<p>The <code>/srv/goomba</code> mount point is a separate Proxmox volume, so the container&#39;s root disk stays small. Include the LXC in a Proxmox backup job (Datacenter → Backup) if you want the client and backups copied off the host too; the client can always be rebuilt, the database backups cannot.</p>
+
+    </article>
+  </main>
+</div>
+</body>
+</html>

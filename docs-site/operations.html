@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Running Goomba XI day to day · Goomba XI docs</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" hidden>
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-label="Menu"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◆</span> Goomba XI <small>docs</small></a>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <a class="nav-link nav-home" href="index.html">Home</a>
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link" href="features.html">Gameplay features</a>
+      <a class="nav-link active" href="operations.html">Operations</a>
+      <a class="nav-link" href="updating.html">Updating</a>
+      <a class="nav-link" href="file-server.html">File server</a>
+      <a class="nav-link" href="client-and-launcher.html">Client & launcher</a>
+      <a class="nav-link" href="auction-house.html">Auction House</a>
+      <a class="nav-link" href="moving-to-vps.html">Moving to a VPS</a>
+      <a class="nav-link" href="without-github.html">Without GitHub</a>
+    <div class="nav-foot">Offline copy · <a href="https://github.com/ricardo-monreal/goomba-xi-server" target="_blank" rel="noopener noreferrer">source</a></div>
+  </nav>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+  <main class="content">
+    <article>
+      <h1 class="page-title">Running Goomba XI day to day</h1>
+<p>Everything is done with the <code>goomba</code> command on the game server. Commands that change something need <code>sudo</code>.</p>
+<h2 id="the-commands">The commands</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>goomba status</code></td>
+<td>Services, players online, website address, LandSandBoat commit, last backup. With <code>sudo</code>, also the last log lines of anything that failed.</td>
+</tr>
+<tr>
+<td><code>goomba logs &lt;server&gt;</code></td>
+<td>Follow a log: <code>world</code>, <code>connect</code> (login), <code>search</code>, <code>map</code>, <code>profile</code>, <code>web</code>. Ctrl+C to stop.</td>
+</tr>
+<tr>
+<td><code>sudo goomba start|stop|restart [game|web|all]</code></td>
+<td>Control the game servers, the website, or both (default: all).</td>
+</tr>
+<tr>
+<td><code>sudo goomba backup</code></td>
+<td>Dump both databases now (also nightly at 04:30).</td>
+</tr>
+<tr>
+<td><code>sudo goomba restore [file]</code></td>
+<td>Without a file: list recent backups. With one: stop everything, back up what is there now, load the backup, start again.</td>
+</tr>
+<tr>
+<td><code>sudo goomba apply</code></td>
+<td>Copy <code>settings/</code> and <code>modules/</code> from this repository into the server. Follow with <code>restart game</code>.</td>
+</tr>
+<tr>
+<td><code>sudo goomba gm &lt;account&gt; &lt;0-5&gt;</code></td>
+<td>Set the GM level of every character on an account. Takes effect at the next zone or login.</td>
+</tr>
+<tr>
+<td><code>sudo goomba zone-ip [address|auto]</code></td>
+<td>Show or change the address game clients are sent to after login.</td>
+</tr>
+<tr>
+<td><code>sudo goomba update</code></td>
+<td>Update LandSandBoat to <code>LSB_REF</code> (see <a href="updating.html">updating.md</a>).</td>
+</tr>
+<tr>
+<td><code>sudo goomba web-update</code></td>
+<td>Update and rebuild the website.</td>
+</tr>
+<tr>
+<td><code>sudo goomba build</code> / <code>db-update</code></td>
+<td>Just rebuild the servers / just apply database updates.</td>
+</tr>
+<tr>
+<td><code>sudo goomba backup-key</code></td>
+<td>Show the SSH key for copying backups to the file server.</td>
+</tr>
+<tr>
+<td><code>sudo goomba ahbot on|off|refresh|clear|status</code></td>
+<td>The Auction House bot for solo play: <a href="auction-house.html">auction-house.md</a>.</td>
+</tr>
+<tr>
+<td><code>sudo goomba web-items</code></td>
+<td>Import item names, descriptions and icons for the website (item browser, equipment). Runs once during install; run again after an Era-DATs update.</td>
+</tr>
+<tr>
+<td><code>goomba version</code></td>
+<td>The exact commits running.</td>
+</tr>
+</tbody></table>
+<h2 id="files-and-folders">Files and folders</h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>/opt/goomba-xi-server</code></td>
+<td>This repository (settings, modules, scripts). Edit here, then <code>sudo goomba apply</code>.</td>
+</tr>
+<tr>
+<td><code>/etc/goomba/goomba.conf</code></td>
+<td>Addresses, LandSandBoat commit, era modules, backups.</td>
+</tr>
+<tr>
+<td><code>/etc/goomba/server.env</code>, <code>web.env</code></td>
+<td>Generated secrets (database passwords, session secret, SMTP).</td>
+</tr>
+<tr>
+<td><code>/opt/goomba/server</code></td>
+<td>LandSandBoat checkout and the built servers. Don&#39;t edit: <code>update</code> resets it.</td>
+</tr>
+<tr>
+<td><code>/opt/goomba/web</code></td>
+<td>The website checkout.</td>
+</tr>
+<tr>
+<td><code>/opt/goomba/backups</code></td>
+<td>Database dumps (<code>xidb-…</code>, <code>goomba_web-…</code>) and a copy of <code>/etc/goomba</code> (<code>etc-goomba-…</code>).</td>
+</tr>
+</tbody></table>
+<h2 id="changing-game-settings">Changing game settings</h2>
+<p>Settings are in <code>settings/main.lua</code>, <code>map.lua</code>, <code>login.lua</code> and <code>network.lua</code> in this repository. Only the keys Goomba XI changes are listed; any key from <code>/opt/goomba/server/settings/default/*.lua</code> can be added to the matching file.</p>
+<pre><code class="language-bash">cd /opt/goomba-xi-server
+sudo nano settings/main.lua            # e.g. EXP_RATE, MAX_LEVEL, START_GIL
+sudo goomba apply &amp;&amp; sudo goomba restart game
+sudo git commit -am &quot;Raise EXP rate&quot;   # keep the change with the repository
+</code></pre>
+<p>Some common ones:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>File</th>
+<th>Goomba XI value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>EXP_RATE</code></td>
+<td><code>main.lua</code> and <code>map.lua</code> (keep equal)</td>
+<td>3.0</td>
+</tr>
+<tr>
+<td><code>SKILLUP_AMOUNT_MULTIPLIER</code></td>
+<td><code>map.lua</code></td>
+<td>2</td>
+</tr>
+<tr>
+<td><code>CRAFT_CHANCE_MULTIPLIER</code></td>
+<td><code>map.lua</code></td>
+<td>2.0</td>
+</tr>
+<tr>
+<td><code>FISHING_ENABLE</code>, <code>FISHING_SKILL_MULTIPLIER</code></td>
+<td><code>map.lua</code></td>
+<td>true, 2.0</td>
+</tr>
+<tr>
+<td><code>INITIAL_LEVEL_CAP</code>, <code>MAX_LEVEL</code></td>
+<td><code>main.lua</code></td>
+<td>50, 75</td>
+</tr>
+<tr>
+<td><code>ENABLE_TRUST_CASTING</code></td>
+<td><code>main.lua</code></td>
+<td>1 (limits in <code>modules/goomba/lua/solo_trusts.lua</code>)</td>
+</tr>
+<tr>
+<td><code>ENABLE_&lt;EXPANSION&gt;</code></td>
+<td><code>main.lua</code></td>
+<td>through ToAU on; keep <code>GOOMBA_ERA_MODULES</code> in step</td>
+</tr>
+</tbody></table>
+<p>A tour of everything Goomba XI changes from stock LandSandBoat, and where, is in <a href="features.html">features.md</a>. Lua modules (<code>modules/goomba/lua/*.lua</code>) change behaviour beyond settings; see <code>modules/goomba/README.md</code>.</p>
+<h2 id="gm-commands">GM commands</h2>
+<p>Give yourself level 5 with <code>sudo goomba gm &lt;account&gt; 5</code>. In game, commands start with <code>!</code>, for example <code>!pos</code>, <code>!zone</code>, <code>!additem</code>, <code>!setmod</code>, <code>!exec</code>. The full list is in <code>/opt/goomba/server/scripts/commands/</code>; each file starts with its permission level and usage.</p>
+<h2 id="backups">Backups</h2>
+<ul>
+<li><strong>When:</strong> every night at 04:30 (<code>goomba-backup.timer</code>), before every <code>goomba update</code> and before every <code>goomba restore</code>.</li>
+<li><strong>What:</strong> both databases (<code>xidb</code> is the game, <code>goomba_web</code> the website) plus a copy of <code>/etc/goomba</code>.</li>
+<li><strong>Kept:</strong> 14 days (<code>BACKUP_KEEP_DAYS</code>).</li>
+<li><strong>Off the box:</strong> when <code>BACKUP_REMOTE</code> is set (for example <code>goomba-backup@10.2.5.65:.</code>), every backup is also copied to <code>/srv/goomba/backups/data</code> on the file server. One-time setup: <a href="install.html">install.md</a>, part 3, &quot;Off-box backups&quot;. Every <code>sudo goomba backup</code> ends with <code>ok copied to …</code> when it works, or <code>could not copy backups</code> with the reason.</li>
+</ul>
+<p>To bring the server back on a new machine:</p>
+<ol>
+<li><p>Copy the backup files to the new Ubuntu 26.04 machine and unpack the settings first, so the install reuses them (same addresses, same secrets, everyone stays signed in):</p>
+<pre><code class="language-bash">sudo tar -xzf etc-goomba-&lt;date&gt;.tar.gz -C /
+</code></pre>
+</li>
+<li><p>Install as normal (<code>install.sh</code>); it asks no questions because <code>/etc/goomba/goomba.conf</code> exists.</p>
+</li>
+<li><p>Copy the <code>.sql.gz</code> files to <code>/opt/goomba/backups</code> and restore both:</p>
+<pre><code class="language-bash">sudo goomba restore xidb-&lt;date&gt;.sql.gz
+sudo goomba restore goomba_web-&lt;date&gt;.sql.gz
+</code></pre>
+</li>
+</ol>
+<p>Snapshots: Proxmox snapshots or <code>vzdump</code> backups of the VM and the LXC are a good second layer (Datacenter → Backup). Take a snapshot before a LandSandBoat update.</p>
+<h2 id="changing-addresses">Changing addresses</h2>
+<table>
+<thead>
+<tr>
+<th>Change</th>
+<th>Do</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>The game server&#39;s IP</td>
+<td><code>sudo goomba zone-ip &lt;new address&gt;</code>. Without a domain, the website moves with it. Rebuild the launcher with the new address.</td>
+</tr>
+<tr>
+<td>The file server&#39;s URL</td>
+<td>Edit <code>GOOMBA_FILES_URL</code> in <code>/etc/goomba/goomba.conf</code>, <code>sudo goomba web-update</code>, rebuild the launcher.</td>
+</tr>
+<tr>
+<td>Add a domain (and HTTPS)</td>
+<td>Set <code>GOOMBA_DOMAIN</code> and <code>GOOMBA_ACME_EMAIL</code>, <code>sudo goomba web-update</code>. See <a href="moving-to-vps.html">moving-to-vps.md</a>.</td>
+</tr>
+</tbody></table>
+<h2 id="password-reset-e-mail">Password-reset e-mail</h2>
+<p>Without mail settings, reset links are written to the website log (<code>goomba logs web</code>) and an admin can pass them on. To send them, set <code>SMTP_URL</code> (for example <code>smtps://user:password@smtp.example.com:465</code>) and <code>MAIL_FROM</code> in <code>/etc/goomba/web.env</code>, then <code>sudo goomba restart web</code>.</p>
+<h2 id="website-content">Website content</h2>
+<p>News posts, rules, FAQ and the approved addons list live in the <a href="https://github.com/ricardo-monreal/goomba-xi-web" target="_blank" rel="noopener noreferrer">website repository</a> (<code>content/blog/*.md</code>, <code>src/app/rules/page.tsx</code>, <code>src/data/approved-addons.txt</code>). Commit and push, then <code>sudo goomba web-update</code>. Launcher news is <code>launcher/news.json</code> on the file server.</p>
+
+    </article>
+  </main>
+</div>
+</body>
+</html>

@@ -51,11 +51,12 @@ Some common ones:
 | `EXP_RATE` | `main.lua` and `map.lua` (keep equal) | 3.0 |
 | `SKILLUP_AMOUNT_MULTIPLIER` | `map.lua` | 2 |
 | `CRAFT_CHANCE_MULTIPLIER` | `map.lua` | 2.0 |
+| `FISHING_ENABLE`, `FISHING_SKILL_MULTIPLIER` | `map.lua` | true, 2.0 |
 | `INITIAL_LEVEL_CAP`, `MAX_LEVEL` | `main.lua` | 50, 75 |
 | `ENABLE_TRUST_CASTING` | `main.lua` | 1 (limits in `modules/goomba/lua/solo_trusts.lua`) |
 | `ENABLE_<EXPANSION>` | `main.lua` | through ToAU on; keep `GOOMBA_ERA_MODULES` in step |
 
-Lua modules (`modules/goomba/lua/*.lua`) change behaviour beyond settings; see `modules/goomba/README.md`.
+A tour of everything Goomba XI changes from stock LandSandBoat, and where, is in [features.md](features.md). Lua modules (`modules/goomba/lua/*.lua`) change behaviour beyond settings; see `modules/goomba/README.md`.
 
 ## GM commands
 

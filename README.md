@@ -15,7 +15,7 @@ Goomba XI runs upstream [LandSandBoat](https://github.com/LandSandBoat/server): 
 | `systemd/`, `nginx/` | One service per game server grouped by `goomba-game.target`, the website, nightly backups; the website's reverse proxy. |
 | `config/goomba.conf.example` | Addresses, pinned LandSandBoat commit, era modules, backups. |
 | `tools/` | File server setup, Git mirror, era patch generator. |
-| `docs/` | Install, operations, updating, file server, moving to a VPS, running without GitHub. |
+| `docs/` | Install, gameplay features, operations, updating, file server, client and launcher, moving to a VPS, running without GitHub. Also published as an offline HTML site in `docs-site/`. |
 
 The LandSandBoat source is not copied into this repository. `goomba install` clones it into `/opt/goomba/server` at the commit pinned in `LSB_REF`, so moving to a newer LandSandBoat is a one-line change followed by `goomba update`.
 

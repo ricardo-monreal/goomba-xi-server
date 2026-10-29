@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Part 4: the game client and the launcher, step by step · Goomba XI docs</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" hidden>
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-label="Menu"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◆</span> Goomba XI <small>docs</small></a>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <a class="nav-link nav-home" href="index.html">Home</a>
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link" href="features.html">Gameplay features</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link" href="updating.html">Updating</a>
+      <a class="nav-link" href="file-server.html">File server</a>
+      <a class="nav-link active" href="client-and-launcher.html">Client & launcher</a>
+      <a class="nav-link" href="auction-house.html">Auction House</a>
+      <a class="nav-link" href="moving-to-vps.html">Moving to a VPS</a>
+      <a class="nav-link" href="without-github.html">Without GitHub</a>
+    <div class="nav-foot">Offline copy · <a href="https://github.com/ricardo-monreal/goomba-xi-server" target="_blank" rel="noopener noreferrer">source</a></div>
+  </nav>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+  <main class="content">
+    <article>
+      <h1 class="page-title">Part 4: the game client and the launcher, step by step</h1>
+<p>At this point the game server (10.2.5.64) and the file server (10.2.5.65) are running, but players have nothing to install yet. This part makes the two things they download:</p>
+<table>
+<thead>
+<tr>
+<th>What</th>
+<th>Built where</th>
+<th>Ends up on the file server as</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>The game client</strong>: FFXI + PlayOnline + Ashita + xiloader + Era-DATs, packed for download</td>
+<td>Your Windows PC, once (and again only after a game update)</td>
+<td><code>launcher/client/manifest.json</code> + <code>launcher/client/files/…</code></td>
+</tr>
+<tr>
+<td><strong>The launcher</strong>: the program players install</td>
+<td>GitHub (automatically, from a tag)</td>
+<td><code>launcher/GoombaXI-Setup.exe</code> and <code>launcher/GoombaXI.AppImage</code></td>
+</tr>
+</tbody></table>
+<p>Each step says <strong>where</strong> to run it. Plan on 1–2 hours, most of it waiting for FFXI to download and for the client to upload.</p>
+<h2 id="before-you-start-check-the-servers">Before you start: check the servers</h2>
+<p>From any PC&#39;s browser:</p>
+<ul>
+<li><code>http://10.2.5.64</code> shows the Goomba XI website.</li>
+<li><code>http://10.2.5.65/launcher/news.json</code> shows a short welcome message.</li>
+</ul>
+<p>If either fails, finish parts 2 and 3 of <a href="install.html">install.md</a> first.</p>
+<h2 id="a-prepare-the-windows-pc-once">A. Prepare the Windows PC (once)</h2>
+<p><strong>Where: Windows PC.</strong></p>
+<ol>
+<li><p>Install <strong>Git for Windows</strong> (<a href="https://git-scm.com/download/win" target="_blank" rel="noopener noreferrer">https://git-scm.com/download/win</a>, all defaults) and <strong>Node.js 22 LTS</strong> (<a href="https://nodejs.org" target="_blank" rel="noopener noreferrer">https://nodejs.org</a>, all defaults).</p>
+</li>
+<li><p>Install <strong>FINAL FANTASY XI</strong> from Square Enix&#39;s official download page, then run <strong>PlayOnline Viewer → Check Files / update</strong> until it says the game is up to date. This is the copy the client is built from: <strong>don&#39;t log in to a Square Enix account with it</strong>, and don&#39;t play it.</p>
+<p>The server accepts this client version or newer (LandSandBoat&#39;s <code>CLIENT_VER</code> check), so a fully updated retail install is exactly right.</p>
+</li>
+<li><p>Open <strong>PowerShell</strong> and get the launcher repository and the parts it needs:</p>
+<pre><code class="language-powershell">cd C:\
+git clone https://github.com/ricardo-monreal/goomba-xi-launcher
+cd C:\goomba-xi-launcher
+npm install
+mkdir vendor, overlay\Ashita\polplugins
+git clone https://github.com/AshitaXI/Ashita-v4beta vendor\Ashita-v4beta
+git -C vendor\Ashita-v4beta checkout 4171c74
+git clone https://github.com/phoenixffxi/Era-DATs vendor\Era-DATs
+</code></pre>
+</li>
+<li><p><strong>xiloader</strong> (the small program that logs the game in, with launch-token support):</p>
+<ol>
+<li>Open <a href="https://github.com/ricardo-monreal/goomba-xi-launcher/actions/workflows/xiloader.yml" target="_blank" rel="noopener noreferrer">https://github.com/ricardo-monreal/goomba-xi-launcher/actions/workflows/xiloader.yml</a> in a browser (signed in to GitHub).</li>
+<li>Click <strong>Run workflow</strong> → <strong>Run workflow</strong> (keep the default commit).</li>
+<li>When the run turns green (a few minutes), open it and download the <strong>xiloader-phoenix</strong> artifact. Unzip it and put <code>xiloader.exe</code> in <code>C:\goomba-xi-launcher\vendor\</code>.</li>
+</ol>
+</li>
+<li><p><strong>XIPivot</strong> (loads the Era-DATs and optional HD packs without touching game files): download the latest Ashita v4 release from <a href="https://github.com/HealsCodes/XIPivot/releases" target="_blank" rel="noopener noreferrer">https://github.com/HealsCodes/XIPivot/releases</a> and copy its <code>pivot.dll</code> to <code>C:\goomba-xi-launcher\overlay\Ashita\polplugins\</code>.</p>
+</li>
+</ol>
+<p>Check: <code>C:\goomba-xi-launcher\vendor</code> now has <code>Ashita-v4beta\</code>, <code>Era-DATs\</code> and <code>xiloader.exe</code>, and <code>overlay\Ashita\polplugins\pivot.dll</code> exists.</p>
+<h2 id="b-build-the-client">B. Build the client</h2>
+<p><strong>Where: Windows PC, PowerShell in <code>C:\goomba-xi-launcher</code>.</strong></p>
+<pre><code class="language-powershell">node tools/build-client.mjs `
+  --ffxi     &quot;C:/Program Files (x86)/PlayOnline/SquareEnix/FINAL FANTASY XI&quot; `
+  --pol      &quot;C:/Program Files (x86)/PlayOnline/SquareEnix/PlayOnlineViewer&quot; `
+  --ashita   ./vendor/Ashita-v4beta `
+  --xiloader ./vendor/xiloader.exe `
+  --era      ./vendor/Era-DATs `
+  --overlay  ./overlay `
+  --out      ./client
+
+node tools/make-manifest.mjs ./client ./publish --gzip --version 2026.10.24-1
+</code></pre>
+<p>(If FFXI is installed somewhere else, change the two paths. The backtick at the end of each line continues the command in PowerShell.)</p>
+<ul>
+<li><code>build-client</code> copies everything into <code>client\</code> (about 15 GB), leaves out personal data, and removes every Ashita addon or plugin that isn&#39;t on the approved list. It stops with a clear message if a part is missing.</li>
+<li><code>make-manifest</code> compresses it into <code>publish\files\…</code> plus <code>publish\manifest.json</code>. It takes a while the first time; later runs only add what changed.</li>
+</ul>
+<p>Check: <code>C:\goomba-xi-launcher\publish\manifest.json</code> exists.</p>
+<h2 id="c-upload-the-client-to-the-file-server">C. Upload the client to the file server</h2>
+<p><strong>Where: Windows PC, PowerShell.</strong> Upload the files <strong>first</strong> and the manifest <strong>last</strong> (the manifest tells launchers the files are ready). <code>goomba-admin</code> is the upload user you created in part 3.</p>
+<pre><code class="language-powershell">scp -r .\publish\files goomba-admin@10.2.5.65:/srv/goomba/files/launcher/client/
+scp .\publish\manifest.json goomba-admin@10.2.5.65:/srv/goomba/files/launcher/client/
+</code></pre>
+<p>Check: <code>http://10.2.5.65/launcher/client/manifest.json</code> opens in a browser.</p>
+<p>(WinSCP works too: connect to 10.2.5.65 as <code>goomba-admin</code> and copy <code>publish\files</code> and then <code>publish\manifest.json</code> into <code>/srv/goomba/files/launcher/client/</code>.)</p>
+<h2 id="d-build-and-publish-the-launcher">D. Build and publish the launcher</h2>
+<p>The launcher has your server addresses built in, so it is built after you know them.</p>
+<p><strong>Where: Windows PC, PowerShell in <code>C:\goomba-xi-launcher</code>.</strong></p>
+<ol>
+<li><p>Point it at your servers, check, and publish a release:</p>
+<pre><code class="language-powershell">git pull
+node tools/configure.mjs --server 10.2.5.64 --files http://10.2.5.65
+node tools/configure.mjs --show
+git commit -am &quot;Point the launcher at 10.2.5.64 / 10.2.5.65&quot;
+git tag v1.0.0
+git push origin main v1.0.0
+</code></pre>
+<p>(<code>configure</code> may say there is nothing to change: the repository already uses these addresses. Then skip the commit line and just tag and push.)</p>
+</li>
+<li><p>On GitHub, <strong>Actions → release</strong> builds the Windows installer and the Linux AppImage (about 10 minutes) and attaches them to a release at <a href="https://github.com/ricardo-monreal/goomba-xi-launcher/releases" target="_blank" rel="noopener noreferrer">https://github.com/ricardo-monreal/goomba-xi-launcher/releases</a>. Download <code>GoombaXI-Setup-1.0.0.exe</code> and <code>GoombaXI-1.0.0-x86_64.AppImage</code>.</p>
+</li>
+<li><p>Copy them to the file server under the fixed names the website links to:</p>
+<pre><code class="language-powershell">scp .\GoombaXI-Setup-1.0.0.exe goomba-admin@10.2.5.65:/srv/goomba/files/launcher/GoombaXI-Setup.exe
+scp .\GoombaXI-1.0.0-x86_64.AppImage goomba-admin@10.2.5.65:/srv/goomba/files/launcher/GoombaXI.AppImage
+</code></pre>
+</li>
+</ol>
+<p>Check: the <strong>Getting Started</strong> page on <code>http://10.2.5.64</code> has working Windows and Linux download links.</p>
+<p>(No GitHub? <code>npm run dist</code> builds the Windows installer locally into <code>dist\</code>; <code>npm run dist:linux</code> on any Linux machine builds the AppImage.)</p>
+<h2 id="e-first-login-part-5">E. First login (part 5)</h2>
+<ol>
+<li>Register at <code>http://10.2.5.64/register</code>.</li>
+<li>Download the launcher from <strong>Getting Started</strong>, install and open it, press <strong>Install</strong> (it downloads the client from 10.2.5.65).</li>
+<li>Sign in with the website username and password, press <strong>Play</strong>, create a character.</li>
+<li>On the game server: <code>sudo goomba gm &lt;your account&gt; 5</code>, then zone or log out and back in.</li>
+</ol>
+<h2 id="when-the-game-updates">When the game updates</h2>
+<p>Square Enix still patches FFXI. When LandSandBoat raises <code>CLIENT_VER</code> (see <a href="updating.html">updating.md</a>): update the retail copy with PlayOnline, then repeat <strong>B</strong> with a new <code>--version</code> and <strong>C</strong>. Players&#39; launchers download only the changed files. Steps A and D are not repeated.</p>
+
+    </article>
+  </main>
+</div>
+</body>
+</html>

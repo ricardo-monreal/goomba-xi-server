@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gameplay features · Goomba XI docs</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" hidden>
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-label="Menu"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◆</span> Goomba XI <small>docs</small></a>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <a class="nav-link nav-home" href="index.html">Home</a>
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link active" href="features.html">Gameplay features</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link" href="updating.html">Updating</a>
+      <a class="nav-link" href="file-server.html">File server</a>
+      <a class="nav-link" href="client-and-launcher.html">Client & launcher</a>
+      <a class="nav-link" href="auction-house.html">Auction House</a>
+      <a class="nav-link" href="moving-to-vps.html">Moving to a VPS</a>
+      <a class="nav-link" href="without-github.html">Without GitHub</a>
+    <div class="nav-foot">Offline copy · <a href="https://github.com/ricardo-monreal/goomba-xi-server" target="_blank" rel="noopener noreferrer">source</a></div>
+  </nav>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+  <main class="content">
+    <article>
+      <h1 class="page-title">Gameplay features</h1>
+<p>What Goomba XI changes from a stock LandSandBoat server, and where to change each thing. Everything here lives in this repository: edit the file, then <code>sudo goomba apply &amp;&amp; sudo goomba restart game</code>, and commit the change so it isn&#39;t lost on the next update.</p>
+<h2 id="era">Era</h2>
+<ul>
+<li>The original game, Rise of the Zilart, Chains of Promathia and Treasures of Aht Urhgan. Wings of the Goddess and later are off (<code>ENABLE_&lt;EXPANSION&gt;</code> in <code>settings/main.lua</code>; keep <code>GOOMBA_ERA_MODULES</code> in <code>/etc/goomba/goomba.conf</code> in step).</li>
+<li>Level cap 50, raised to 75 through Maat&#39;s Limit Break quests (<code>INITIAL_LEVEL_CAP</code>, <code>MAX_LEVEL</code>).</li>
+<li>Later systems (Records of Eminence, Field and Grounds of Valor manuals, home-point teleports, Mog Garden, …) are off.</li>
+</ul>
+<h2 id="rates">Rates</h2>
+<table>
+<thead>
+<tr>
+<th>What</th>
+<th>Setting</th>
+<th>File</th>
+<th>Goomba XI value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Experience from kills</td>
+<td><code>EXP_RATE</code></td>
+<td><code>map.lua</code></td>
+<td>3.0</td>
+</tr>
+<tr>
+<td>Experience from quests and scrolls</td>
+<td><code>EXP_RATE</code></td>
+<td><code>main.lua</code></td>
+<td>3.0 (keep equal to <code>map.lua</code>)</td>
+</tr>
+<tr>
+<td>Combat and magic skill-ups</td>
+<td><code>SKILLUP_AMOUNT_MULTIPLIER</code></td>
+<td><code>map.lua</code></td>
+<td>2 (about 3× a normal gain)</td>
+</tr>
+<tr>
+<td>Crafting skill-up chance</td>
+<td><code>CRAFT_CHANCE_MULTIPLIER</code></td>
+<td><code>map.lua</code></td>
+<td>2.0</td>
+</tr>
+<tr>
+<td>Fishing</td>
+<td><code>FISHING_ENABLE</code></td>
+<td><code>map.lua</code></td>
+<td>true (LandSandBoat ships it off)</td>
+</tr>
+<tr>
+<td>Fishing skill-up chance</td>
+<td><code>FISHING_SKILL_MULTIPLIER</code></td>
+<td><code>map.lua</code></td>
+<td>2.0</td>
+</tr>
+</tbody></table>
+<p>Drop rates are retail.</p>
+<h2 id="trusts-for-solo-and-small-group-play">Trusts, for solo and small-group play</h2>
+<p>In <code>modules/goomba/lua/solo_trusts.lua</code> and <code>trust_shop.lua</code>:</p>
+<ul>
+<li>Up to five trusts at once (<code>maxTrusts</code>).</li>
+<li>Every character knows five from the first login: Excenmille, Kupipi, Naji, Ayame and Shantotto — a tank, a healer, two melee and a black mage (<code>starterTrusts</code>).</li>
+<li>Retail zone and battlefield rules (<code>everywhere = false</code>): no trusts in towns or in battles that forbid them, and only a solo player or the party leader can call them.</li>
+<li>Trusts whose main job is Geomancer, Rune Fencer, Dancer or Scholar are blocked — those jobs postdate the 75 era (<code>blockedTrusts</code>). A blocked trust can&#39;t be cast even if it is learned some other way.</li>
+<li>The <strong>Trust Liaison</strong> in Lower Jeuno sells the other 102 trusts for conquest points, in tiers that open when any of your jobs reaches level 20, 30, 40, 50, 60, 70 and 75.</li>
+</ul>
+<h2 id="quests">Quests</h2>
+<ul>
+<li><strong>A Small <code>&lt;nation&gt;</code> Challenge</strong> (<code>modules/goomba/lua/nation_ring_quest.lua</code>), for example <em>A Small Bastok Challenge</em>: an envoy beside the gate guard in Southern San d&#39;Oria, Bastok Markets and Windurst Woods gives any citizen their nation&#39;s ring, whatever their race, for defeating 10 experience-giving monsters in each of the two areas outside the city.</li>
+</ul>
+<h2 id="auction-house">Auction House</h2>
+<ul>
+<li>An optional bot keeps the Auction House stocked and buys what players list, so there is a market even when few people are online: <code>sudo goomba ahbot on</code>. See <a href="auction-house.html">auction-house.md</a>.</li>
+</ul>
+<p>Other custom behaviour lives in <code>modules/goomba/</code> — see its <code>README.md</code> in the repository.</p>
+
+    </article>
+  </main>
+</div>
+</body>
+</html>

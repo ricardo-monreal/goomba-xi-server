@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Running Goomba XI without GitHub · Goomba XI docs</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" hidden>
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-label="Menu"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◆</span> Goomba XI <small>docs</small></a>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <a class="nav-link nav-home" href="index.html">Home</a>
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link" href="features.html">Gameplay features</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link" href="updating.html">Updating</a>
+      <a class="nav-link" href="file-server.html">File server</a>
+      <a class="nav-link" href="client-and-launcher.html">Client & launcher</a>
+      <a class="nav-link" href="auction-house.html">Auction House</a>
+      <a class="nav-link" href="moving-to-vps.html">Moving to a VPS</a>
+      <a class="nav-link active" href="without-github.html">Without GitHub</a>
+    <div class="nav-foot">Offline copy · <a href="https://github.com/ricardo-monreal/goomba-xi-server" target="_blank" rel="noopener noreferrer">source</a></div>
+  </nav>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+  <main class="content">
+    <article>
+      <h1 class="page-title">Running Goomba XI without GitHub</h1>
+<p>For a preservation project, everything Goomba XI needs should be able to live on your own machines. The file server keeps a Git mirror of every repository and the release files the launcher downloads; the game server and your build PC are told to use it; and all builds run locally instead of on GitHub Actions. Do the &quot;download now&quot; steps while GitHub is still reachable: after that, nothing depends on it.</p>
+<h2 id="what-uses-github">What uses GitHub</h2>
+<table>
+<thead>
+<tr>
+<th>Where</th>
+<th>What it fetches</th>
+<th>Without GitHub</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Game server install and <code>goomba update</code></td>
+<td>LandSandBoat, its submodules (navmeshes), the website</td>
+<td>Git mirror + <code>GIT_MIRROR</code></td>
+</tr>
+<tr>
+<td>Game server build</td>
+<td>About 15 C++ libraries (CPM: fmt, spdlog, asio, …) and CPM itself</td>
+<td>Git mirror, plus a permanent cache in <code>/opt/goomba/cache/cpm</code></td>
+</tr>
+<tr>
+<td>Client build (Windows)</td>
+<td>Ashita, Era-DATs, xiloader and its libraries</td>
+<td>Git mirror</td>
+</tr>
+<tr>
+<td>Launcher and xiloader releases</td>
+<td>GitHub Actions</td>
+<td>Local builds (below)</td>
+</tr>
+<tr>
+<td>Launcher builds</td>
+<td>Electron, NSIS, winCodeSign, AppImage tools</td>
+<td>Downloaded once, then cached</td>
+</tr>
+<tr>
+<td>Players&#39; Linux launchers</td>
+<td>GE-Proton, umu-launcher, winetricks</td>
+<td>Hosted on the file server (<code>linux.*Url</code>)</td>
+</tr>
+</tbody></table>
+<p>Not GitHub, still internet: Ubuntu/Debian packages, the npm registry, PyPI (LandSandBoat&#39;s Python tools), and Valve&#39;s Steam Linux Runtime that umu downloads on a player&#39;s first Play. For a fully offline archive, also keep an apt cache (<code>apt-cacher-ng</code>) and an npm/PyPI mirror, or a Proxmox backup of a working VM.</p>
+<h2 id="1-git-mirror-on-the-file-server">1. Git mirror on the file server</h2>
+<p>On the Debian LXC, as root:</p>
+<pre><code class="language-bash">/opt/goomba-xi-server/tools/setup-file-server.sh --git-mirror
+su - goomba-admin -c /opt/goomba-xi-server/tools/git-mirror.sh
+</code></pre>
+<p>The first run copies about 40 repositories (several GB; LandSandBoat&#39;s navmeshes are the largest) into <code>/srv/git/github.com/&lt;owner&gt;/&lt;repo&gt;.git</code>. The list is <code>/srv/git/mirrors.txt</code>; the script also follows every mirror&#39;s submodules and the libraries its CMake files download, so new ones are picked up when LandSandBoat changes. Check it from the game server:</p>
+<pre><code class="language-bash">git ls-remote http://10.2.5.65/git/github.com/LandSandBoat/server | head -1
+</code></pre>
+<p>Keep it current with a nightly job (<code>crontab -e</code> as <code>goomba-admin</code>):</p>
+<pre><code>30 3 * * * /opt/goomba-xi-server/tools/git-mirror.sh &gt;&gt; /home/goomba-admin/git-mirror.log 2&gt;&amp;1
+</code></pre>
+<h2 id="2-point-the-game-server-at-the-mirror">2. Point the game server at the mirror</h2>
+<p>In <code>/etc/goomba/goomba.conf</code> on the game server:</p>
+<pre><code class="language-bash">GIT_MIRROR=&quot;http://10.2.5.65/git&quot;
+</code></pre>
+<p>The next <code>sudo goomba update</code> or <code>sudo goomba web-update</code> adds one system-wide Git setting that sends every <code>https://github.com/…</code> URL to the mirror: LandSandBoat, its submodules, the website and the libraries the build downloads. Clearing <code>GIT_MIRROR</code> removes it again. Check it with:</p>
+<pre><code class="language-bash">git config --system --get-regexp insteadof
+git ls-remote --get-url https://github.com/LandSandBoat/server
+</code></pre>
+<p>Build libraries are also kept in <code>/opt/goomba/cache/cpm</code> from the first build on, so rebuilds work even without the mirror.</p>
+<p>To install a <strong>new</strong> game server from the mirror, clone this repository from it and write the configuration yourself before installing, with <code>GIT_MIRROR</code> and the addresses filled in (the installer skips its questions when the file exists):</p>
+<pre><code class="language-bash">sudo apt install -y git
+sudo git clone http://10.2.5.65/git/github.com/ricardo-monreal/goomba-xi-server /opt/goomba-xi-server
+sudo install -d /etc/goomba
+sudo cp /opt/goomba-xi-server/config/goomba.conf.example /etc/goomba/goomba.conf
+sudo nano /etc/goomba/goomba.conf     # GIT_MIRROR, GOOMBA_ZONE_IP, GOOMBA_FILES_URL
+sudo /opt/goomba-xi-server/bin/goomba install
+</code></pre>
+<h2 id="3-your-pcs-read-from-the-mirror-push-to-it">3. Your PCs: read from the mirror, push to it</h2>
+<p>On the Windows build PC (and any machine you develop on):</p>
+<pre><code class="language-powershell">git config --global url.&quot;http://10.2.5.65/git/github.com/&quot;.insteadOf &quot;https://github.com/&quot;
+git config --global url.&quot;goomba-admin@10.2.5.65:/srv/git/github.com/&quot;.pushInsteadOf &quot;https://github.com/&quot;
+</code></pre>
+<p>Repositories keep their GitHub-style addresses, but fetches come from the mirror and pushes go to it over SSH. When you stop pushing to GitHub, mark your own repositories in <code>/srv/git/mirrors.txt</code> so the nightly job stops overwriting them:</p>
+<pre><code>ricardo-monreal/goomba-xi-server local
+ricardo-monreal/goomba-xi-web local
+ricardo-monreal/goomba-xi-launcher local
+</code></pre>
+<h2 id="4-build-releases-locally">4. Build releases locally</h2>
+<h3 id="xiloader-windows">xiloader (Windows)</h3>
+<p>Install Visual Studio 2022 Build Tools with &quot;Desktop development with C++&quot;, plus CMake, then:</p>
+<pre><code class="language-powershell">git clone https://github.com/phoenixffxi/xiloader C:\xiloader
+cd C:\xiloader
+git checkout 806d1c79a3eef254572b56e069ba0ddd291b3ecf
+$env:CPM_SOURCE_CACHE = &quot;C:\goomba-cache\cpm&quot;
+cmake -S . -B build -A Win32 -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+copy xiloader.exe C:\goomba-xi-launcher\vendor\
+</code></pre>
+<p>The exe is written to the source folder, not <code>build\</code>.</p>
+<h3 id="launcher-windows-installer">Launcher, Windows installer</h3>
+<pre><code class="language-powershell">cd C:\goomba-xi-launcher
+git pull
+npm.cmd ci
+npm.cmd run dist
+</code></pre>
+<p>The installer is <code>dist\GoombaXI-Setup-&lt;version&gt;.exe</code>. The first build downloads Electron, NSIS and winCodeSign into <code>%LOCALAPPDATA%\electron\Cache</code> and <code>%LOCALAPPDATA%\electron-builder\Cache</code>. Copy those two folders to the file server (<code>/srv/goomba/files/build-cache/windows/</code>) and back onto any new build PC to build offline.</p>
+<h3 id="launcher-linux-appimage">Launcher, Linux AppImage</h3>
+<p>On any Ubuntu machine with Node.js 20+ (the game server works):</p>
+<pre><code class="language-bash">git clone https://github.com/ricardo-monreal/goomba-xi-launcher ~/goomba-xi-launcher
+cd ~/goomba-xi-launcher
+npm ci
+npm run dist:linux
+</code></pre>
+<p>The AppImage is <code>dist/GoombaXI-&lt;version&gt;-x86_64.AppImage</code>. Its build tools are cached in <code>~/.cache/electron</code> and <code>~/.cache/electron-builder</code>; keep a copy of those too.</p>
+<h3 id="publish">Publish</h3>
+<ol>
+<li>Bump <code>version</code> in <code>package.json</code>, commit, and tag it: <code>git tag v1.0.1 &amp;&amp; git push origin main v1.0.1</code> (goes to the mirror).</li>
+<li>Copy the two files to the file server, keeping the versioned copies:</li>
+</ol>
+<pre><code class="language-bash">scp dist/GoombaXI-Setup-1.0.1.exe dist/GoombaXI-1.0.1-x86_64.AppImage goomba-admin@10.2.5.65:/srv/goomba/files/launcher/releases/
+ssh goomba-admin@10.2.5.65 &#39;cd /srv/goomba/files/launcher &amp;&amp; cp releases/GoombaXI-Setup-1.0.1.exe GoombaXI-Setup.exe &amp;&amp; cp releases/GoombaXI-1.0.1-x86_64.AppImage GoombaXI.AppImage&#39;
+</code></pre>
+<h2 id="5-players-linux-runtime">5. Players&#39; Linux runtime</h2>
+<p>Download these once, on any PC, and put them in <code>/srv/goomba/files/launcher/runtime/</code>:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>The GE-Proton11-5 <code>.tar.gz</code> (x86_64) and its <code>.sha512sum</code></td>
+<td>github.com/GloriousEggroll/proton-ge-custom/releases/tag/GE-Proton11-5</td>
+</tr>
+<tr>
+<td>The umu-launcher zipapp <code>.tar</code></td>
+<td>github.com/Open-Wine-Components/umu-launcher/releases (latest)</td>
+</tr>
+<tr>
+<td><code>winetricks</code></td>
+<td>raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks</td>
+</tr>
+</tbody></table>
+<p>Then set the addresses in the launcher&#39;s <code>launcher.config.json</code>, build and publish a new launcher:</p>
+<pre><code class="language-json">&quot;linux&quot;: {
+  &quot;protonVersion&quot;: &quot;GE-Proton11-5&quot;,
+  &quot;protonUrl&quot;: &quot;http://10.2.5.65/launcher/runtime/&lt;the GE-Proton file&gt;.tar.gz&quot;,
+  &quot;umuUrl&quot;: &quot;http://10.2.5.65/launcher/runtime/&lt;the umu zipapp file&gt;.tar&quot;,
+  &quot;winetricksUrl&quot;: &quot;http://10.2.5.65/launcher/runtime/winetricks&quot;
+}
+</code></pre>
+<h2 id="6-check-it">6. Check it</h2>
+<p>Block GitHub for a moment (on the router, or <code>127.0.0.1 github.com</code> in the game server&#39;s <code>/etc/hosts</code>), then run <code>sudo goomba update</code>, build the launcher on each PC, and do a first Play on a fresh Linux install. Anything that still reaches GitHub fails loudly; remove the block afterwards.</p>
+
+    </article>
+  </main>
+</div>
+</body>
+</html>

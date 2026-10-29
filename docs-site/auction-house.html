@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Auction House bot · Goomba XI docs</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" hidden>
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-label="Menu"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◆</span> Goomba XI <small>docs</small></a>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <a class="nav-link nav-home" href="index.html">Home</a>
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link" href="features.html">Gameplay features</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link" href="updating.html">Updating</a>
+      <a class="nav-link" href="file-server.html">File server</a>
+      <a class="nav-link" href="client-and-launcher.html">Client & launcher</a>
+      <a class="nav-link active" href="auction-house.html">Auction House</a>
+      <a class="nav-link" href="moving-to-vps.html">Moving to a VPS</a>
+      <a class="nav-link" href="without-github.html">Without GitHub</a>
+    <div class="nav-foot">Offline copy · <a href="https://github.com/ricardo-monreal/goomba-xi-server" target="_blank" rel="noopener noreferrer">source</a></div>
+  </nav>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+  <main class="content">
+    <article>
+      <h1 class="page-title">The Auction House bot</h1>
+<p>Goomba XI is meant to be played solo, so there are no other players to fill the Auction House. The bot does their part:</p>
+<ul>
+<li><strong>It sells.</strong> About 7,100 Level 75 era items are kept in stock (3 of each, and 3 stacks of everything stackable), under the name <strong>Goomba AH</strong>. It tops them up every hour.</li>
+<li><strong>It buys.</strong> Every 30 seconds it buys whatever players list, if the item is on its list and the asking price isn&#39;t above its own. The seller is paid the bot&#39;s price (not the asking price) through the delivery box, like a normal AH sale.</li>
+</ul>
+<p>It is <a href="https://github.com/AdamGagorik/ffxiahbot" target="_blank" rel="noopener noreferrer">ffxiahbot</a> by Adam Gagorik (version 7.0.1, which supports LandSandBoat), run as the <code>goomba-ahbot</code> service. It only touches the <code>auction_house</code> table; LandSandBoat&#39;s own trigger pays sellers.</p>
+<h2 id="turn-it-on">Turn it on</h2>
+<p><strong>Where: the game server (10.2.5.64).</strong></p>
+<pre><code class="language-bash">cd /opt/goomba-xi-server &amp;&amp; sudo git pull
+sudo goomba ahbot on
+</code></pre>
+<p>It installs the bot, builds the item list, fills the AH (about 26,000 listings, a minute or two) and starts the service. Check:</p>
+<pre><code class="language-bash">sudo goomba ahbot status
+</code></pre>
+<p>In game, any Auction House now has items in every category. List something you own: within about 30 seconds it shows as sold, and the gil arrives in your delivery box.</p>
+<h2 id="the-item-list">The item list</h2>
+<p><code>tools/ah-items.py</code> builds <code>/opt/goomba/ahbot/items.csv</code> for this server from the bot&#39;s own Level 75 era list (prices scraped from ffxiah.com):</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Only items with an AH category and without the &quot;no auction&quot; flag</td>
+<td>No Rare/Ex items on the AH</td>
+</tr>
+<tr>
+<td>Materials used or made only by recipes of expansions turned off in <code>settings/main.lua</code> are left out</td>
+<td>No Wings of the Goddess or Abyssea materials</td>
+</tr>
+<tr>
+<td>A price is always more than an NPC pays for the item</td>
+<td>Buying from the bot and selling to a vendor never makes gil</td>
+</tr>
+<tr>
+<td>A price is capped below the cheapest NPC or guild shop price</td>
+<td>Buying from a vendor and selling to the bot never makes gil</td>
+</tr>
+<tr>
+<td>Anything in <code>ahbot/exclude.txt</code> is left out</td>
+<td>Your own exceptions</td>
+</tr>
+</tbody></table>
+<p>The prices are today&#39;s retail ones, which can differ from 2007&#39;s. Scale them all with <code>AHBOT_PRICE_MULTIPLIER</code>, or exclude items you think are wrong.</p>
+<h2 id="settings">Settings</h2>
+<p>In <code>/etc/goomba/goomba.conf</code> (commented-out defaults are at the end of the file):</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>AHBOT_NAME</code></td>
+<td><code>Goomba AH</code></td>
+<td>Name shown as seller and buyer (max 15 characters)</td>
+</tr>
+<tr>
+<td><code>AHBOT_STOCK_SINGLE</code></td>
+<td><code>3</code></td>
+<td>Copies of each item kept for sale</td>
+</tr>
+<tr>
+<td><code>AHBOT_STOCK_STACKS</code></td>
+<td><code>3</code></td>
+<td>Stacks of each stackable item kept for sale</td>
+</tr>
+<tr>
+<td><code>AHBOT_PRICE_MULTIPLIER</code></td>
+<td><code>1.0</code></td>
+<td>Scales every price (<code>0.5</code> = half), still kept within the NPC limits</td>
+</tr>
+<tr>
+<td><code>AHBOT_TICK</code></td>
+<td><code>30</code></td>
+<td>Seconds between buying player listings</td>
+</tr>
+<tr>
+<td><code>AHBOT_RESTOCK</code></td>
+<td><code>3600</code></td>
+<td>Seconds between restocks</td>
+</tr>
+</tbody></table>
+<p>After changing any of them, or <code>ahbot/exclude.txt</code>, or the expansions in <code>settings/main.lua</code>:</p>
+<pre><code class="language-bash">sudo goomba ahbot refresh
+</code></pre>
+<p>It rebuilds the list, replaces the bot&#39;s listings with the new prices and restarts the bot.</p>
+<h2 id="commands">Commands</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>sudo goomba ahbot on</code></td>
+<td>Install, build the list, fill the AH, start</td>
+</tr>
+<tr>
+<td><code>sudo goomba ahbot refresh</code></td>
+<td>Rebuild the list and re-list at the new prices</td>
+</tr>
+<tr>
+<td><code>sudo goomba ahbot status</code></td>
+<td>Service state, items on the list, listings for sale, player listings bought</td>
+</tr>
+<tr>
+<td><code>sudo goomba ahbot off</code></td>
+<td>Stop the bot; its listings stay up</td>
+</tr>
+<tr>
+<td><code>sudo goomba ahbot clear</code></td>
+<td>Stop the bot and remove its listings (price history stays)</td>
+</tr>
+</tbody></table>
+<p>The bot starts and stops with the game (<code>sudo goomba restart game</code>), and <code>goomba status</code> shows it. Its log is <code>/opt/goomba/ahbot/ahbot.log</code> (errors only) and <code>goomba logs ahbot</code>.</p>
+
+    </article>
+  </main>
+</div>
+</body>
+</html>

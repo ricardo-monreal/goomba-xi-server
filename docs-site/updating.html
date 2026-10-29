@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Updating Goomba XI · Goomba XI docs</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" hidden>
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-label="Menu"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◆</span> Goomba XI <small>docs</small></a>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <a class="nav-link nav-home" href="index.html">Home</a>
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link" href="features.html">Gameplay features</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link active" href="updating.html">Updating</a>
+      <a class="nav-link" href="file-server.html">File server</a>
+      <a class="nav-link" href="client-and-launcher.html">Client & launcher</a>
+      <a class="nav-link" href="auction-house.html">Auction House</a>
+      <a class="nav-link" href="moving-to-vps.html">Moving to a VPS</a>
+      <a class="nav-link" href="without-github.html">Without GitHub</a>
+    <div class="nav-foot">Offline copy · <a href="https://github.com/ricardo-monreal/goomba-xi-server" target="_blank" rel="noopener noreferrer">source</a></div>
+  </nav>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+  <main class="content">
+    <article>
+      <h1 class="page-title">Updating Goomba XI</h1>
+<p>Goomba XI runs LandSandBoat at one pinned commit, <code>LSB_REF</code> in <code>/etc/goomba/goomba.conf</code>. Nothing changes until you move that pin, so the server never updates itself by surprise. For a preservation server, updating rarely is fine: do it for fixes you want, not on a schedule.</p>
+<h2 id="updating-this-repositorys-settings-and-modules">Updating this repository&#39;s settings and modules</h2>
+<pre><code class="language-bash">sudo goomba update
+</code></pre>
+<p><code>update</code> first pulls this repository, then rebuilds and restarts. If <code>LSB_REF</code> didn&#39;t change, the build is quick (ccache) and the database step is a no-op.</p>
+<h2 id="moving-to-a-newer-landsandboat">Moving to a newer LandSandBoat</h2>
+<ol>
+<li><p><strong>Pick a commit.</strong> Look at <a href="https://github.com/LandSandBoat/server/commits/base" target="_blank" rel="noopener noreferrer">https://github.com/LandSandBoat/server/commits/base</a> and choose a recent commit whose checks are green. Copy its full hash.</p>
+</li>
+<li><p><strong>Snapshot the VM</strong> in Proxmox (VM → Snapshots → Take Snapshot). It&#39;s the fastest way back.</p>
+</li>
+<li><p><strong>Set the pin</strong> in <code>/etc/goomba/goomba.conf</code>, and in <code>config/goomba.conf.example</code> in this repository so the next install uses it too:</p>
+<pre><code class="language-bash">LSB_REF=&quot;&lt;new commit hash&gt;&quot;
+</code></pre>
+</li>
+<li><p><strong>Update:</strong></p>
+<pre><code class="language-bash">sudo goomba update
+</code></pre>
+<p>It fetches the new source, re-applies the settings, modules and <code>patches/</code>, rebuilds, stops the game, <strong>backs up both databases</strong>, applies new SQL and migrations, and starts the game again. Players are disconnected for the database step only (a minute or two).</p>
+</li>
+<li><p><strong>Regenerate the era zone patches</strong> from the new checkout (they replace whole lists, so they must match it):</p>
+<pre><code class="language-bash">sudo apt install -y python3-yaml
+cd /opt/goomba-xi-server
+sudo python3 tools/gen-era-zone-patches.py /opt/goomba/server
+sudo goomba apply &amp;&amp; sudo goomba restart game
+sudo git add -A modules/goomba_era config/goomba.conf.example
+sudo git commit -m &quot;LandSandBoat &lt;short hash&gt;&quot;
+</code></pre>
+</li>
+<li><p><strong>Check:</strong> <code>goomba status</code>, log in, zone a few times. Rebuild the website too (<code>sudo goomba web-update</code>) so its game tables (experience, item stats, ferries) come from the new data.</p>
+</li>
+</ol>
+<h3 id="if-the-client-version-changed">If the client version changed</h3>
+<p>LandSandBoat follows the retail client. When <code>CLIENT_VER</code> in <code>/opt/goomba/server/settings/default/login.lua</code> changes, players&#39; clients must match: patch your Windows client build with PlayOnline, rebuild the client and publish a new manifest (launcher README, step 2) <strong>before</strong> updating the server. Until then you can keep the old value by adding <code>CLIENT_VER = &#39;&lt;old value&gt;&#39;</code> to <code>settings/login.lua</code>.</p>
+<h3 id="if-the-launch-token-patch-doesnt-apply">If the launch-token patch doesn&#39;t apply</h3>
+<p><code>update</code> stops with <code>0001-launch-token-login.patch doesn&#39;t apply</code> when LandSandBoat changed the login code. Nothing has been rebuilt at that point; the running servers keep working.</p>
+<ul>
+<li><p><strong>Quick way back:</strong> put <code>LSB_REF</code> back to the commit <code>goomba version</code> shows and run <code>sudo goomba update</code>.</p>
+</li>
+<li><p><strong>Refresh the patch:</strong> the change is small (about 100 lines in <code>src/login/auth_session.cpp</code>, <code>auth_session.h</code> and <code>otp_helpers.h</code>, each marked <code>[Goomba] Launch token</code>). In a LandSandBoat checkout at the new commit, make the same edits, then:</p>
+<pre><code class="language-bash">git diff &gt; /opt/goomba-xi-server/patches/0001-launch-token-login.patch
+</code></pre>
+<p>Commit it to this repository and run <code>sudo goomba update</code> again. If LandSandBoat itself ever adds launch tokens, delete the patch.</p>
+</li>
+</ul>
+<h3 id="if-the-build-fails">If the build fails</h3>
+<p>The error is at the end of the output. <code>sudo goomba build</code> rebuilds without the other steps. If the new commit simply doesn&#39;t build, go back to the previous <code>LSB_REF</code> (or restore the Proxmox snapshot) and pick a newer commit later.</p>
+<h3 id="if-the-database-update-fails">If the database update fails</h3>
+<p>The backup taken a moment before is in <code>/opt/goomba/backups</code>. Restore it with <code>sudo goomba restore xidb-&lt;date&gt;.sql.gz</code> after going back to the previous <code>LSB_REF</code>.</p>
+<h2 id="carrying-your-own-source-changes">Carrying your own source changes</h2>
+<p>For a one-off C++ or core Lua change, add another numbered file to <code>patches/</code> (<code>0002-my-change.patch</code>, made with <code>git diff</code> in a LandSandBoat checkout). For many changes, fork <code>LandSandBoat/server</code>, set <code>LSB_REPO</code> to your fork and <code>LSB_REF</code> to your branch or commit; the patches still apply on top.</p>
+<h2 id="updating-the-website-and-the-launcher">Updating the website and the launcher</h2>
+<ul>
+<li>Website: push to <code>goomba-xi-web</code>, then <code>sudo goomba web-update</code>.</li>
+<li>Launcher: bump <code>version</code> in its <code>package.json</code>, tag <code>v&lt;version&gt;</code>, and copy the new installers to the file server (launcher README, step 3). Installed launchers keep working; players get the new one from the website.</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+</body>
+</html>
