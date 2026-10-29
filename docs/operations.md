@@ -20,6 +20,7 @@ Everything is done with the `goomba` command on the game server. Commands that c
 | `sudo goomba backup-key` | Show the SSH key for copying backups to the file server. |
 | `sudo goomba ahbot on\|off\|refresh\|clear\|status` | The Auction House bot for solo play: [auction-house.md](auction-house.md). |
 | `sudo goomba web-items` | Import item names, descriptions and icons for the website (item browser, equipment). Runs once during install; run again after an Era-DATs update. |
+| `sudo goomba docs` | Rebuild the offline docs site and the GM-command / zone / NM reference lists from this server (served at `/docs/`). |
 | `goomba version` | The exact commits running. |
 
 ## Files and folders

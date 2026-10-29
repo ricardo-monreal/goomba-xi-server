@@ -17,6 +17,7 @@
 #   sudo bin/goomba backup-key     Show the SSH key to authorize on the backup machine
 #   sudo bin/goomba ahbot on|off|refresh|clear|status   Auction House bot (stocks and buys for solo play)
 #   sudo bin/goomba web-items      Import item names and icons for the website (from Era-DATs)
+#   sudo bin/goomba docs           Rebuild the offline docs site and reference lists from this server
 #        bin/goomba version        Goomba XI, LandSandBoat and website versions
 #
 # Configuration: /etc/goomba/goomba.conf (from config/goomba.conf.example).
@@ -560,7 +561,7 @@ setup_nginx() {
   fi
   # Keep the HTTPS block certbot added earlier: only rewrite the file when there isn't one.
   if ! grep -q 'managed by Certbot' /etc/nginx/sites-available/goomba-web.conf 2>/dev/null || [[ -z "${GOOMBA_DOMAIN:-}" ]]; then
-    sed -e "s#@SERVER_NAMES@#$names#g" -e "s#@LISTEN_OPTS@#$listen_opts#g" -e "s#@WEB_PORT@#$WEB_PORT#g" \
+    sed -e "s#@SERVER_NAMES@#$names#g" -e "s#@LISTEN_OPTS@#$listen_opts#g" -e "s#@WEB_PORT@#$WEB_PORT#g" -e "s#@DOCS_DIR@#$REPO_DIR/docs-site#g" \
       "$REPO_DIR/nginx/goomba-web.conf" > /etc/nginx/sites-available/goomba-web.conf
     # Without IPv6 on this machine nginx can't open the [::]:80 socket.
     [[ -e /proc/net/if_inet6 ]] || sed -i '/listen \[::\]/d' /etc/nginx/sites-available/goomba-web.conf
@@ -991,6 +992,15 @@ cmd_gm() {
   ok "gmlevel $level on $n character(s) of $account (takes effect at next zone or login)"
 }
 
+cmd_docs() {
+  command -v node >/dev/null || die "node is needed to build the docs (it is installed with the website)"
+  step "Reference lists (GM commands, zones, NMs) from $SERVER_DIR"
+  ( cd "$REPO_DIR" && LSB_DIR="$SERVER_DIR" node tools/gen-reference-docs.mjs )
+  step "Building the offline docs site"
+  ( cd "$REPO_DIR" && node tools/build-docs.mjs )
+  ok "docs rebuilt: $(site_url)/docs/  (or open $REPO_DIR/docs-site/index.html)"
+}
+
 main() {
   local cmd="${1:-help}"; shift || true
   case "$cmd" in
@@ -1010,6 +1020,7 @@ main() {
     zone-ip) cmd_zone_ip "$@" ;;
     ahbot) cmd_ahbot "$@" ;;
     web-items) need_root web-items; load_conf; web_items ;;
+    docs) need_root docs; load_conf; cmd_docs ;;
     version|--version) cmd_version ;;
     help|-h|--help) sed -n '2,23p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
     *) die "unknown command '$cmd' (see: goomba help)" ;;

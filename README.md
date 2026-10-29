@@ -64,6 +64,19 @@ When both are up:
 
 Secrets are generated during install and live only on the server: `/etc/goomba/server.env` (game database login) and `/etc/goomba/web.env` (website database login, session secret, optional SMTP for password-reset mail).
 
+## Documentation
+
+The full docs — install, gameplay features, operations, updating, the file server, the client and launcher, moving to a VPS, GM commands, zone IDs and NM IDs — are in [`docs/`](docs/) and are also published as a self-contained **offline HTML site** in [`docs-site/`](docs-site/) (open `docs-site/index.html` in any browser). On a running server they are served at `http://<server>/docs/`.
+
+Rebuild the site after editing a doc, or to refresh the reference lists for a new LandSandBoat version:
+
+```bash
+sudo goomba docs                 # on the game server: regenerates the reference lists and the site
+# or, from the repository, with Node:
+node tools/gen-reference-docs.mjs   # GM commands, zones, NMs from /opt/goomba/server
+node tools/build-docs.mjs           # docs/*.md -> docs-site/
+```
+
 ## Day to day
 
 ```bash

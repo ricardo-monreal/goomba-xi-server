@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GM commands · Goomba XI docs</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" hidden>
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-label="Menu"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◆</span> Goomba XI <small>docs</small></a>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <a class="nav-link nav-home" href="index.html">Home</a>
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link" href="features.html">Gameplay features</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link" href="updating.html">Updating</a>
+      <a class="nav-link" href="file-server.html">File server</a>
+      <a class="nav-link" href="client-and-launcher.html">Client & launcher</a>
+      <a class="nav-link" href="auction-house.html">Auction House</a>
+      <a class="nav-link" href="moving-to-vps.html">Moving to a VPS</a>
+      <a class="nav-link" href="without-github.html">Without GitHub</a>
+      <div class="nav-group">Reference</div>
+      <a class="nav-link active" href="gm-commands.html">GM commands</a>
+      <a class="nav-link" href="zone-ids.html">Zone IDs</a>
+      <a class="nav-link" href="nm-ids.html">NM IDs</a>
+    <div class="nav-foot">Offline copy · <a href="https://github.com/ricardo-monreal/goomba-xi-server" target="_blank" rel="noopener noreferrer">source</a></div>
+  </nav>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+  <main class="content">
+    <article>
+      <h1 class="page-title">GM commands</h1>
+<p>Every in-game command on this server, read from <code>scripts/commands/</code> in the LandSandBoat build it runs. In game, commands start with <code>!</code> (for example <code>!pos</code>, <code>!additem</code>). Give yourself command access with <code>sudo goomba gm &lt;account&gt; 5</code> on the game server; the <strong>Level</strong> column is the minimum GM level a command needs.</p>
+<p>207 commands.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Level</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>!addabytime</code></td>
+<td>1</td>
+<td>Adds an amount of time to the given target. If no target then to the current player.</td>
+</tr>
+<tr>
+<td><code>!addallatma</code></td>
+<td>1</td>
+<td>Adds all Atma Key Items to the given player.</td>
+</tr>
+<tr>
+<td><code>!addallattachments</code></td>
+<td>1</td>
+<td>Unlocks all attachments</td>
+</tr>
+<tr>
+<td><code>!addallmaps</code></td>
+<td>1</td>
+<td>Adds all maps to the given player.</td>
+</tr>
+<tr>
+<td><code>!addallmonstrosity</code></td>
+<td>1</td>
+<td>Adds all species, instincts, and variants for monstrosity</td>
+</tr>
+<tr>
+<td><code>!addallmounts</code></td>
+<td>1</td>
+<td>Adds all mount key items to player, granting access to their associated mounts</td>
+</tr>
+<tr>
+<td><code>!addallspells</code></td>
+<td>1</td>
+<td>Adds all valid spells EXCEPT TRUSTS to the given target. If no target then to the current player.</td>
+</tr>
+<tr>
+<td><code>!addalltrusts</code></td>
+<td>1</td>
+<td>Adds all trust spells to the given target. If no target then to the current player.</td>
+</tr>
+<tr>
+<td><code>!addallwarps</code></td>
+<td>1</td>
+<td>Adds all Survival Guides and Home Points to GM if no target is specified.</td>
+</tr>
+<tr>
+<td><code>!addallweaponskills</code></td>
+<td>1</td>
+<td>Adds all learned weaponskills to the given target. If no target then to the current player.</td>
+</tr>
+<tr>
+<td><code>!addcurrency &lt;currency type&gt; &lt;amount&gt; &lt;target player&gt;</code></td>
+<td>1</td>
+<td>Adds the specified currency to the player</td>
+</tr>
+<tr>
+<td><code>!adddynatime</code></td>
+<td>1</td>
+<td>Adds an amount of time to the given target. If no target then to the current player.</td>
+</tr>
+<tr>
+<td><code>!addeffect</code></td>
+<td>1</td>
+<td>Adds the given effect to the given player.</td>
+</tr>
+<tr>
+<td><code>!addfish &lt;fishId&gt; &lt;length&gt; &lt;weight&gt;</code></td>
+<td>3</td>
+<td>Adds a measured fish to the GMs inventory.</td>
+</tr>
+<tr>
+<td><code>!additem &lt;itemId&gt; &lt;quantity&gt; &lt;aug1&gt; &lt;v1&gt; &lt;aug2&gt; &lt;v2&gt; &lt;aug3&gt; &lt;v3&gt; &lt;aug4&gt; &lt;v4&gt; &lt;trial&gt;</code></td>
+<td>1</td>
+<td>Adds an item to the GMs inventory.</td>
+</tr>
+<tr>
+<td><code>!addkeyitem &lt;ID&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Adds a key item to the player.</td>
+</tr>
+<tr>
+<td><code>!addlights &lt;light type&gt; &lt;amount&gt; &lt;target player&gt;</code></td>
+<td>1</td>
+<td>Adds the amount of specified light to the player</td>
+</tr>
+<tr>
+<td><code>!addmission &lt;logID&gt; &lt;missionID&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Adds a mission to the GM or target players log.</td>
+</tr>
+<tr>
+<td><code>!addquest &lt;logID&gt; &lt;questID&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Adds a quest to the given targets log.</td>
+</tr>
+<tr>
+<td><code>!addspell &lt;spellID&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>adds the ability to use a spell to the player</td>
+</tr>
+<tr>
+<td><code>!addtempitem</code></td>
+<td>1</td>
+<td>Adds a temp item to the players inventory.</td>
+</tr>
+<tr>
+<td><code>!addtime</code></td>
+<td>5</td>
+<td>Resets and then adds offset (in seconds) to earth clock.</td>
+</tr>
+<tr>
+<td><code>!addtitle</code></td>
+<td>1</td>
+<td>Add and set player title.</td>
+</tr>
+<tr>
+<td><code>!addtreasure &lt;itemId&gt; &lt;target player/party/alliance&gt;</code></td>
+<td>1</td>
+<td>Adds an item directly to the treasure pool.</td>
+</tr>
+<tr>
+<td><code>!addWeaponSkillPoints &lt;slot&gt; &lt;points&gt; (player)</code></td>
+<td>1</td>
+<td>Adds weapon skill points to an equipped item.</td>
+</tr>
+<tr>
+<td><code>!afkcheck</code></td>
+<td>1</td>
+<td>Sends a custom menu to the cursor target,</td>
+</tr>
+<tr>
+<td><code>!ah</code></td>
+<td>1</td>
+<td>opens the Auction House menu anywhere in the world</td>
+</tr>
+<tr>
+<td><code>!animatenpc</code></td>
+<td>1</td>
+<td>Changes the animation of the given npc. (For testing purposes.)</td>
+</tr>
+<tr>
+<td><code>!animatesubnpc</code></td>
+<td>1</td>
+<td>Changes the animationSub of the given npc. (For testing purposes.)</td>
+</tr>
+<tr>
+<td><code>!animation</code></td>
+<td>1</td>
+<td>Sets the players current animation.</td>
+</tr>
+<tr>
+<td><code>!besieged &lt;subcommand&gt; ...</code></td>
+<td>1</td>
+<td>Drives Besieged by hand until the system runs itself.</td>
+</tr>
+<tr>
+<td><code>!breaklinkshell</code></td>
+<td>4</td>
+<td>Breaks a linkshell and all pearls/sacks</td>
+</tr>
+<tr>
+<td><code>!bring &lt;player&gt;</code></td>
+<td>1</td>
+<td>Brings the target to the player.</td>
+</tr>
+<tr>
+<td><code>!build</code></td>
+<td>0</td>
+<td>Print the server&#39;s current build information</td>
+</tr>
+<tr>
+<td><code>!cansee &lt;target&gt;</code></td>
+<td>1</td>
+<td>Can you see (via ximesh raycasting) your cursor target?</td>
+</tr>
+<tr>
+<td><code>!capallskills</code></td>
+<td>1</td>
+<td>Caps all the players skills.</td>
+</tr>
+<tr>
+<td><code>!capskill</code></td>
+<td>1</td>
+<td>Caps a specific skill.</td>
+</tr>
+<tr>
+<td><code>!changejob</code></td>
+<td>1</td>
+<td>Changes the players current job.</td>
+</tr>
+<tr>
+<td><code>!changesjob</code></td>
+<td>1</td>
+<td>Changes the players current subjob.</td>
+</tr>
+<tr>
+<td><code>!checkinstance</code></td>
+<td>1</td>
+<td>Displays Progress and Stage inside instance</td>
+</tr>
+<tr>
+<td><code>!checkinteraction (handlerName)</code></td>
+<td>5</td>
+<td>-----------------------------------</td>
+</tr>
+<tr>
+<td><code>!checklocalvar &lt;varName&gt; { &#39;player&#39;/&#39;mob&#39;/&#39;npc&#39; } { name/ID }</code></td>
+<td>1</td>
+<td>checks player or npc local variable and returns result value.</td>
+</tr>
+<tr>
+<td><code>!checkmission &lt;Log ID&gt; &lt;Player&gt;</code></td>
+<td>1</td>
+<td>Prints current MissionID for the given LogID and target Player to the in game chatlog</td>
+</tr>
+<tr>
+<td><code>!checkmissionstatus &lt;Log ID&gt; &lt;Player&gt;</code></td>
+<td>1</td>
+<td>Prints current missionStatus for the given LogID and target Player to the in game chatlog</td>
+</tr>
+<tr>
+<td><code>!checkquest &lt;logID&gt; &lt;questID&gt; (player)</code></td>
+<td>1</td>
+<td>Prints status of the quest to the in game chatlog</td>
+</tr>
+<tr>
+<td><code>!checkvar &lt;varType&gt; &lt;varName&gt;</code></td>
+<td>1</td>
+<td>checks player or server variable and returns result value.</td>
+</tr>
+<tr>
+<td><code>!chocobo &lt;color&gt; &lt;head&gt; &lt;tail&gt; &lt;feet&gt;</code></td>
+<td>1</td>
+<td>Register and use a chocobo with a specific look</td>
+</tr>
+<tr>
+<td><code>!cnation &lt;target&gt; &lt;campaign allegiance&gt;</code></td>
+<td>1</td>
+<td>check or alter target characters campaign allegiance</td>
+</tr>
+<tr>
+<td><code>!completemission &lt;logID&gt; &lt;missionID&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Completes the given mission for the target player, if that mission is currently active.</td>
+</tr>
+<tr>
+<td><code>!completequest &lt;logID&gt; &lt;questID&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Completes the given quest for the GM or target player.</td>
+</tr>
+<tr>
+<td><code>!completerecord &lt;recordID&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Completes the given quest for the GM or target player.</td>
+</tr>
+<tr>
+<td><code>!costume</code></td>
+<td>1</td>
+<td>Sets the players current costume.</td>
+</tr>
+<tr>
+<td><code>!costume2</code></td>
+<td>1</td>
+<td>Sets the players current costume2.</td>
+</tr>
+<tr>
+<td><code>!cp</code></td>
+<td>1</td>
+<td>Adds the given amount cp to the player.</td>
+</tr>
+<tr>
+<td><code>!crash</code></td>
+<td>5</td>
+<td>force the server process to crash</td>
+</tr>
+<tr>
+<td><code>!cs</code></td>
+<td>1</td>
+<td>Starts the given event for the player.</td>
+</tr>
+<tr>
+<td><code>!cs2</code></td>
+<td>1</td>
+<td>Starts the given event for the player.</td>
+</tr>
+<tr>
+<td><code>!delallinventory</code></td>
+<td>1</td>
+<td>Deletes all items in a player&#39;s inventory, if they have any.</td>
+</tr>
+<tr>
+<td><code>!delallweaponskills</code></td>
+<td>1</td>
+<td>Removes all learned weaponskills to the given target. If no target then to the current player.</td>
+</tr>
+<tr>
+<td><code>!delcontaineritems</code></td>
+<td>1</td>
+<td>Deletes all items in a player&#39;s specified container, if they have any.</td>
+</tr>
+<tr>
+<td><code>!delcurrency &lt;currency type&gt; &lt;amount&gt; &lt;target player&gt;</code></td>
+<td>1</td>
+<td>Removes the specified currency from the player</td>
+</tr>
+<tr>
+<td><code>!addeffect</code></td>
+<td>1</td>
+<td>Removes the given effect from the given player.</td>
+</tr>
+<tr>
+<td><code>!delitem</code></td>
+<td>1</td>
+<td>Deletes a single item held by a player, if they have it.</td>
+</tr>
+<tr>
+<td><code>!delkeyitem</code></td>
+<td>1</td>
+<td>Deletes the given key item from the player.</td>
+</tr>
+<tr>
+<td><code>!delmission &lt;logID&gt; &lt;missionID&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Deletes the given mission from the GM or target player.</td>
+</tr>
+<tr>
+<td><code>!delquest &lt;logID&gt; &lt;questID&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Deletes the given quest from the GM or target player.</td>
+</tr>
+<tr>
+<td><code>!delspell &lt;spellID&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Removes a spell from the players spell list.</td>
+</tr>
+<tr>
+<td><code>!despawnmob &lt;mobid-optional&gt;</code></td>
+<td>1</td>
+<td>Despawns the given mob <t> or mobID)</td>
+</tr>
+<tr>
+<td><code>!down &lt;optional number&gt; &lt;optional target&gt;</code></td>
+<td>1</td>
+<td>Alters vertical coordinate</td>
+</tr>
+<tr>
+<td><code>!entityVisual</code></td>
+<td>1</td>
+<td>push entityVisual packet to player</td>
+</tr>
+<tr>
+<td><code>!exec</code></td>
+<td>4</td>
+<td>Allows you to execute a Lua string directly from chat.</td>
+</tr>
+<tr>
+<td><code>!fafnir</code></td>
+<td>5</td>
+<td>Summon a fightable Fafnir (no loot)</td>
+</tr>
+<tr>
+<td><code>!garrison &lt;command&gt; (player)</code></td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td><code>!gc_full</code></td>
+<td>5</td>
+<td>Tell Lua to run a full garbage collection</td>
+</tr>
+<tr>
+<td><code>!gc_step</code></td>
+<td>5</td>
+<td>Tell Lua to run a garbage collection step</td>
+</tr>
+<tr>
+<td><code>!getcraftRank &lt;craft skill or ID&gt; (player)</code></td>
+<td>1</td>
+<td>returns target&#39;s RANK of specified craft skill</td>
+</tr>
+<tr>
+<td><code>!geteffects [target]</code></td>
+<td>1</td>
+<td>Lists all active status effects on the specified target (or self if no target specified)</td>
+</tr>
+<tr>
+<td><code>!getenmity</code></td>
+<td>2</td>
+<td>prints the target mob&#39;s current CE and VE towards you</td>
+</tr>
+<tr>
+<td><code>!getfame</code></td>
+<td>3</td>
+<td>Gets fame level of a target player</td>
+</tr>
+<tr>
+<td><code>!getfamily &lt;optional MobID&gt;</code></td>
+<td>1</td>
+<td>Prints the mob&#39;s family ID.</td>
+</tr>
+<tr>
+<td><code>!getfishers &lt;MinutesToLookback&gt;</code></td>
+<td>1</td>
+<td>Returns a list of all players who have recently fished.</td>
+</tr>
+<tr>
+<td><code>!getid</code></td>
+<td>1</td>
+<td>Prints the ID of the currently selected target under the cursor</td>
+</tr>
+<tr>
+<td><code>!getlocalvars</code></td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td><code>!getmobaction</code></td>
+<td>1</td>
+<td>Prints mob&#39;s current action to the command user.</td>
+</tr>
+<tr>
+<td><code>!getmobflags &lt;optional MobID&gt;</code></td>
+<td>1</td>
+<td>Used to get a mob&#39;s entity flags for testing.</td>
+</tr>
+<tr>
+<td><code>!getmobmod &lt;modID&gt;</code></td>
+<td>1</td>
+<td>gets a mod by ID on the player or cursor target</td>
+</tr>
+<tr>
+<td><code>!getmod &lt;modID&gt;</code></td>
+<td>3</td>
+<td>gets a mod by ID on the player or cursor target</td>
+</tr>
+<tr>
+<td><code>!getpool</code></td>
+<td>3</td>
+<td>prints the treasure pool of the current target.</td>
+</tr>
+<tr>
+<td><code>!getprevzoneline</code></td>
+<td>1</td>
+<td>gets the ID of the players last zoneline or cursor target.</td>
+</tr>
+<tr>
+<td><code>!getquestvar</code></td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td><code>!getskill &lt;skill name or ID&gt; &lt;target&gt;</code></td>
+<td>1</td>
+<td>returns target&#39;s level of specified skill</td>
+</tr>
+<tr>
+<td><code>!getspecies &lt;optional MobID&gt;</code></td>
+<td>1</td>
+<td>Prints the mob&#39;s species ID.</td>
+</tr>
+<tr>
+<td><code>!getstats</code></td>
+<td>1</td>
+<td>prints stats of cursor target into chatlog, for debugging.</td>
+</tr>
+<tr>
+<td><code>!getta</code></td>
+<td>1</td>
+<td>returns the name of the entity that would be chosen for trick attack given the current (mob) target</td>
+</tr>
+<tr>
+<td><code>!gettp</code></td>
+<td>1</td>
+<td>prints tp of the player and the target(if applicable), for debugging.</td>
+</tr>
+<tr>
+<td><code>!getwspoints</code></td>
+<td>1</td>
+<td>prints current ws points, optionaly specifying the weapon slot to check (default main)</td>
+</tr>
+<tr>
+<td><code>!givebonanzapearl &lt;player&gt; &lt;number&gt; &lt;eventnum&gt;</code></td>
+<td>5</td>
+<td>Gives a bonanza pearl with <number> for <eventnum></td>
+</tr>
+<tr>
+<td><code>!givegil &lt;amount&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Gives the specified amount of gil to GM or target player.</td>
+</tr>
+<tr>
+<td><code>!giveitem &lt;player&gt; &lt;itemId&gt; &lt;amount&gt; &lt;aug1&gt; &lt;v1&gt; &lt;aug2&gt; &lt;v2&gt; &lt;aug3&gt; &lt;v3&gt; &lt;aug4&gt; &lt;v4&gt;</code></td>
+<td>1</td>
+<td>Gives an item to the target player.</td>
+</tr>
+<tr>
+<td><code>!givels</code></td>
+<td>1</td>
+<td>Makes a linkpearl for the given linkshell (pearlsack for gm)</td>
+</tr>
+<tr>
+<td><code>!givemagianitem &lt;player&gt; &lt;trialId&gt; (RewardItem = False)</code></td>
+<td>1</td>
+<td>Gives the Magian Item associated with the given Trial ID</td>
+</tr>
+<tr>
+<td><code>!givexp &lt;amount&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Gives the GM or target player experience points.</td>
+</tr>
+<tr>
+<td><code>!gmhome</code></td>
+<td>1</td>
+<td>Sends you to zone 210 (GM_HOME), if you are a GM</td>
+</tr>
+<tr>
+<td><code>!godmode</code></td>
+<td>1</td>
+<td>Toggles god mode on the player, granting them several special abilities.</td>
+</tr>
+<tr>
+<td><code>!goto</code></td>
+<td>1</td>
+<td>Goes to the target player.</td>
+</tr>
+<tr>
+<td><code>!gotoid</code></td>
+<td>1</td>
+<td>Go to given mob or npc ID</td>
+</tr>
+<tr>
+<td><code>!gotoname</code></td>
+<td>1</td>
+<td>Go to given mob or npc by name</td>
+</tr>
+<tr>
+<td><code>!hasitem</code></td>
+<td>1</td>
+<td>Checks if a player has a specific item</td>
+</tr>
+<tr>
+<td><code>!haskeyitem &lt;ID&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Checks if player has specified KeyItem.</td>
+</tr>
+<tr>
+<td><code>!hastitle</code></td>
+<td>1</td>
+<td>Check if player already has a title.</td>
+</tr>
+<tr>
+<td><code>!hide</code></td>
+<td>1</td>
+<td>Hides the GM from other players.</td>
+</tr>
+<tr>
+<td><code>!homepoint</code></td>
+<td>1</td>
+<td>Sends the target to their homepoint.</td>
+</tr>
+<tr>
+<td><code>!hp &lt;amount&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Sets the GM or target players health.</td>
+</tr>
+<tr>
+<td><code>!immortal &lt;player&gt;</code></td>
+<td>1</td>
+<td>Sets a target to be unkillable</td>
+</tr>
+<tr>
+<td><code>!inject</code></td>
+<td>1</td>
+<td>Injects the given packet data.</td>
+</tr>
+<tr>
+<td><code>!injectaction</code></td>
+<td>1</td>
+<td>Injects an action packet with the specified action and animation id.</td>
+</tr>
+<tr>
+<td><code>!instance &lt;instance_id&gt;</code></td>
+<td>1</td>
+<td>Load an instance and take you there</td>
+</tr>
+<tr>
+<td><code>!inwater &lt;target&gt;</code></td>
+<td>1</td>
+<td>Are you in water?</td>
+</tr>
+<tr>
+<td><code>!jail</code></td>
+<td>1</td>
+<td>Sends the target player to jail. (Mordion Gaol)</td>
+</tr>
+<tr>
+<td><code>!logoff</code></td>
+<td>1</td>
+<td>Logs the target player off by force.</td>
+</tr>
+<tr>
+<td><code>!masterjob</code></td>
+<td>1</td>
+<td>Masters the player&#39;s current job</td>
+</tr>
+<tr>
+<td><code>!menu</code></td>
+<td>1</td>
+<td>Shows a basic test menu with three options</td>
+</tr>
+<tr>
+<td><code>!menu_paginated</code></td>
+<td>1</td>
+<td>Shows a paginated test menu with two pages, an option per page.</td>
+</tr>
+<tr>
+<td><code>!messagebasic</code></td>
+<td>1</td>
+<td>Injects a message basic packet.</td>
+</tr>
+<tr>
+<td><code>!messagespecial</code></td>
+<td>1</td>
+<td>Injects a message special packet.</td>
+</tr>
+<tr>
+<td><code>!messagestandard</code></td>
+<td>1</td>
+<td>Injects a standard message packet.</td>
+</tr>
+<tr>
+<td><code>!minigame</code></td>
+<td>1</td>
+<td>Opens a menu to allow you to quickly test minigames.</td>
+</tr>
+<tr>
+<td><code>!mission &lt;logid&gt; &lt;missionid&gt; optional &lt;player-name&gt;, logid and mission ids work by numbers or string.format</code></td>
+<td>1</td>
+<td>mission command built with menu control, can add/delete/complete missions, see status,</td>
+</tr>
+<tr>
+<td><code>!mobhere &lt;mobId&gt;</code></td>
+<td>1</td>
+<td>Spawns a MOB and then moves it to the current position, if in same zone.</td>
+</tr>
+<tr>
+<td><code>!mobskill</code></td>
+<td>1</td>
+<td>Forces an entity to do a skill</td>
+</tr>
+<tr>
+<td><code>!mobsub</code></td>
+<td>1</td>
+<td>Changes the sub-animation of the given mob. (For testing purposes.)</td>
+</tr>
+<tr>
+<td><code>!monstrosity</code></td>
+<td>1</td>
+<td>Toggles MON, keeping the current position. Leaving restores the jobs held on entry.</td>
+</tr>
+<tr>
+<td><code>!monunlock &lt;species or variant&gt; (player)</code></td>
+<td>1</td>
+<td>Unlocks one Monstrosity family or variant by its enum name, such as TIGER or FLOWERING_TREANT.</td>
+</tr>
+<tr>
+<td><code>!mount</code></td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td><code>!mp &lt;amount&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Sets the GM or target players mana.</td>
+</tr>
+<tr>
+<td><code>!naga</code></td>
+<td>5</td>
+<td>POC for Domain Invasion and fenced content in general.</td>
+</tr>
+<tr>
+<td><code>!npchere &lt;npcId&gt;</code></td>
+<td>1</td>
+<td>Spawns an NPC and then moves it to the current position, if in same zone.</td>
+</tr>
+<tr>
+<td><code>!pardon</code></td>
+<td>1</td>
+<td>Pardons a player from jail. (Mordion Gaol)</td>
+</tr>
+<tr>
+<td><code>!petgodmode</code></td>
+<td>1</td>
+<td>Toggles god mode on the player&#39;s pet, granting them several special abilities.</td>
+</tr>
+<tr>
+<td><code>!pettp</code></td>
+<td>1</td>
+<td>Sets the players pet tp.</td>
+</tr>
+<tr>
+<td><code>!pos &lt;x&gt; &lt;y&gt; &lt;z&gt; &lt;optional zone&gt; &lt;optional target&gt;</code></td>
+<td>1</td>
+<td>Sets the players position. If none is given, prints out the position instead.</td>
+</tr>
+<tr>
+<td><code>!posemannequin</code></td>
+<td>1</td>
+<td>changes the pose of a mannequin</td>
+</tr>
+<tr>
+<td><code>!posfix</code></td>
+<td>1</td>
+<td>Resets a targets account session and warps them to Jeuno.</td>
+</tr>
+<tr>
+<td><code>!promote</code></td>
+<td>1</td>
+<td>Promotes the player to a new GM level.</td>
+</tr>
+<tr>
+<td><code>!provokeall</code></td>
+<td>1</td>
+<td>Makes all enemies in the current zone target you and sets their TP to 3000.</td>
+</tr>
+<tr>
+<td><code>!quest &lt;logid&gt; &lt;questid&gt; optional &lt;player-name&gt;, logid and quest ids work by numbers or string.format</code></td>
+<td>1</td>
+<td>quest command built with menu control, can add/delete/complete quests, see status,</td>
+</tr>
+<tr>
+<td><code>!racechange &lt;player&gt;</code></td>
+<td>3</td>
+<td>Make player eligible for Ancestry Moogle Race Change service.</td>
+</tr>
+<tr>
+<td><code>!raise &lt;power&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Sends raise menu to GM or target player.</td>
+</tr>
+<tr>
+<td><code>!rebuildnavmesh</code></td>
+<td>5</td>
+<td>Rebuild the navmesh for the current zone with configurable parameters</td>
+</tr>
+<tr>
+<td><code>!release</code></td>
+<td>1</td>
+<td>Releases the player from current events.</td>
+</tr>
+<tr>
+<td><code>!reloadbattlefield</code></td>
+<td>5</td>
+<td>Attempt to reload specified battlefield lua without a restart.</td>
+</tr>
+<tr>
+<td><code>!reloaddefaultactions</code></td>
+<td>5</td>
+<td>Reloads default actions for current zone or all</td>
+</tr>
+<tr>
+<td><code>!reloadglobal</code></td>
+<td>4</td>
+<td>Attempt to reload specified global lua without a restart.</td>
+</tr>
+<tr>
+<td><code>!reloadinteractions</code></td>
+<td>5</td>
+<td>Reloads the interaction framework</td>
+</tr>
+<tr>
+<td><code>!reloadmagians</code></td>
+<td>5</td>
+<td>Reloads the magian listeners</td>
+</tr>
+<tr>
+<td><code>!reloadnavmesh</code></td>
+<td>5</td>
+<td>Reload the navmesh for the current zone</td>
+</tr>
+<tr>
+<td><code>!reloadquest</code></td>
+<td>5</td>
+<td>Attempt to reload specified quest lua without a restart.</td>
+</tr>
+<tr>
+<td><code>!reloadrecipes</code></td>
+<td>5</td>
+<td>Reloads crafting recipes from the DB</td>
+</tr>
+<tr>
+<td><code>!rename</code></td>
+<td>1</td>
+<td>Renames target NPC or MOB. Limited to 16 character spaces.</td>
+</tr>
+<tr>
+<td><code>!reset &lt;player&gt;</code></td>
+<td>1</td>
+<td>If no name is specified, resets your own JA timers.</td>
+</tr>
+<tr>
+<td><code>!resetlights</code></td>
+<td>1</td>
+<td>resets all lights to 0</td>
+</tr>
+<tr>
+<td><code>!return &lt;player&gt;</code></td>
+<td>1</td>
+<td>Warps GM or target player to their previous zone</td>
+</tr>
+<tr>
+<td><code>!send &lt;player1&gt; (&lt;player2) or zone)</code></td>
+<td>1</td>
+<td>Teleport a player to:</td>
+</tr>
+<tr>
+<td><code>!setallegiance</code></td>
+<td>1</td>
+<td>Sets the players allegiance.</td>
+</tr>
+<tr>
+<td><code>!setbag</code></td>
+<td>1</td>
+<td>Sets the players bag size</td>
+</tr>
+<tr>
+<td><code>!setbattlefieldtime</code></td>
+<td>4</td>
+<td>Set time limit for an active battlefield</td>
+</tr>
+<tr>
+<td><code>!setcapacitypoints &lt;amount&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Sets the target players job points count.</td>
+</tr>
+<tr>
+<td><code>!setcraftRank &lt;craft skill or ID&gt; &lt;craft rank&gt; &lt;target&gt;</code></td>
+<td>1</td>
+<td>sets target&#39;s RANK of specified craft skill</td>
+</tr>
+<tr>
+<td><code>!setfamelevel</code></td>
+<td>3</td>
+<td>Sets fame level on a target player</td>
+</tr>
+<tr>
+<td><code>!setgil</code></td>
+<td>1</td>
+<td>Sets the players gil.</td>
+</tr>
+<tr>
+<td><code>!setjobpoints &lt;amount&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Sets the target players job points count.</td>
+</tr>
+<tr>
+<td><code>!setlocalvar &lt;varName&gt; &lt;player/mob/npc&gt; &lt;ID&gt;</code></td>
+<td>3</td>
+<td>set player npc or mob local variable and value.</td>
+</tr>
+<tr>
+<td><code>!setmentor &lt;MentorMode&gt; &lt;target&gt;</code></td>
+<td>1</td>
+<td>0 = Not a mentor, 1 = Unlocked but inactive, 2 = Unlocked &amp; flag on.</td>
+</tr>
+<tr>
+<td><code>!setmerits &lt;amount&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Sets the target players merit count.</td>
+</tr>
+<tr>
+<td><code>!setmissionstatus (player) (value) (log ID) (index)</code></td>
+<td>1</td>
+<td>Sets missionStatus for the given LogID and target Player</td>
+</tr>
+<tr>
+<td><code>!setmobflags &lt;flags&gt; &lt;optional MobID&gt;</code></td>
+<td>1</td>
+<td>Used to manipulate a mob&#39;s nameflags for testing.</td>
+</tr>
+<tr>
+<td><code>!setmoblevel</code></td>
+<td>1</td>
+<td>Sets the target monsters level.</td>
+</tr>
+<tr>
+<td><code>!setmobmod</code></td>
+<td>3</td>
+<td>Sets the specified mob modifier to the specified value on the cursor target mob</td>
+</tr>
+<tr>
+<td><code>!setmod</code></td>
+<td>1</td>
+<td>Sets the specified modifier to the specified value on the cursor target or player</td>
+</tr>
+<tr>
+<td><code>!setmusic &lt;typeID&gt; &lt;songID&gt;</code></td>
+<td>1</td>
+<td>Temporarily changes music played by users client</td>
+</tr>
+<tr>
+<td><code>!setplayerlevel</code></td>
+<td>1</td>
+<td>Sets the target players level.</td>
+</tr>
+<tr>
+<td><code>!setplayermodel &lt;modelid&gt; &lt;slot&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Sets the look of the user or target player based on model id offset and slot (for testing).</td>
+</tr>
+<tr>
+<td><code>!setplayernation</code></td>
+<td>1</td>
+<td>Sets the target players nation.</td>
+</tr>
+<tr>
+<td><code>!setplayervar</code></td>
+<td>1</td>
+<td>Sets a variable on the target player.</td>
+</tr>
+<tr>
+<td><code>!setProgress</code></td>
+<td>1</td>
+<td>changes progress inside an instance</td>
+</tr>
+<tr>
+<td><code>!setquestvar</code></td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td><code>!setrank</code></td>
+<td>1</td>
+<td>Sets the players rank.</td>
+</tr>
+<tr>
+<td><code>!setskill &lt;skill name or ID&gt; &lt;skill level&gt; &lt;target&gt;</code></td>
+<td>1</td>
+<td>sets target&#39;s level of specified skill</td>
+</tr>
+<tr>
+<td><code>!setStage</code></td>
+<td>1</td>
+<td>changes stage inside an instance</td>
+</tr>
+<tr>
+<td><code>!setweather</code></td>
+<td>1</td>
+<td>Sets the current weather for the current zone.</td>
+</tr>
+<tr>
+<td><code>!sleep</code></td>
+<td>5</td>
+<td>inject an artificial delay of 1 second (FOR LOCAL PERFORMANCE TESTING ONLY)</td>
+</tr>
+<tr>
+<td><code>!spawnmob</code></td>
+<td>1</td>
+<td>Spawns a mob.</td>
+</tr>
+<tr>
+<td><code>!speed</code></td>
+<td>1</td>
+<td>Sets the players movement speed.</td>
+</tr>
+<tr>
+<td><code>!stun</code></td>
+<td>3</td>
+<td>stuns a non-NPC target for an hour. good for testing damage/mechanics on a punching bag.</td>
+</tr>
+<tr>
+<td><code>!takegil &lt;amount&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Removes the amount of gil from the given player.</td>
+</tr>
+<tr>
+<td><code>!takexp &lt;amount&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Removes experience points from the target player.</td>
+</tr>
+<tr>
+<td><code>!time</code></td>
+<td>1</td>
+<td>Prints time info.</td>
+</tr>
+<tr>
+<td><code>!togglegm</code></td>
+<td>1</td>
+<td>Toggles a GMs nameflags/icon.</td>
+</tr>
+<tr>
+<td><code>!tp &lt;amount&gt; &lt;player&gt;</code></td>
+<td>1</td>
+<td>Sets a players tp. If they have a pet, also sets pet tp.</td>
+</tr>
+<tr>
+<td><code>!trustengage</code></td>
+<td>0</td>
+<td>Sets the engagement type of a players trusts</td>
+</tr>
+<tr>
+<td><code>!up &lt;optional number&gt; &lt;optional target&gt;</code></td>
+<td>1</td>
+<td>Alters vertical coordinate</td>
+</tr>
+<tr>
+<td><code>!updateconquest</code></td>
+<td>1</td>
+<td>Updates all conquest guard. (Need modify in db first.)</td>
+</tr>
+<tr>
+<td><code>!uptime</code></td>
+<td>1</td>
+<td>prints zone uptime</td>
+</tr>
+<tr>
+<td><code>!wallhack &lt;optional target&gt;</code></td>
+<td>1</td>
+<td>Allows the player to walk through walls.</td>
+</tr>
+<tr>
+<td><code>!where</code></td>
+<td>1</td>
+<td>Tells the player about their current position.</td>
+</tr>
+<tr>
+<td><code>!yell</code></td>
+<td>1</td>
+<td>Bans a specified player from using /yell.</td>
+</tr>
+<tr>
+<td><code>!zone</code></td>
+<td>1</td>
+<td>Teleports a player to the given zone.</td>
+</tr>
+</tbody></table>
+
+    </article>
+  </main>
+</div>
+</body>
+</html>

@@ -27,7 +27,10 @@ const pages = [
   { slug: 'client-and-launcher', file: 'client-and-launcher.md', nav: 'Client & launcher', desc: 'Build the game client and publish the launcher.' },
   { slug: 'auction-house', file: 'auction-house.md', nav: 'Auction House', desc: 'The Auction House bot for solo and small-group play.' },
   { slug: 'moving-to-vps', file: 'moving-to-vps.md', nav: 'Moving to a VPS', desc: 'Taking the server off your home network.' },
-  { slug: 'without-github', file: 'without-github.md', nav: 'Without GitHub', desc: 'Install, update and build entirely from your own machines.' }
+  { slug: 'without-github', file: 'without-github.md', nav: 'Without GitHub', desc: 'Install, update and build entirely from your own machines.' },
+  { slug: 'gm-commands', file: 'gm-commands.md', nav: 'GM commands', desc: 'Every in-game ! command and the GM level it needs.', group: 'Reference' },
+  { slug: 'zone-ids', file: 'zone-ids.md', nav: 'Zone IDs', desc: 'Every zone and its ID.', group: 'Reference' },
+  { slug: 'nm-ids', file: 'nm-ids.md', nav: 'NM IDs', desc: 'Every notorious monster and its mob ID.', group: 'Reference' }
 ]
 
 const fileToSlug = new Map(pages.map((p) => [p.file, p.slug]))
@@ -71,8 +74,16 @@ function splitTitle(md, fallback) {
 const SITE = 'Goomba XI'
 
 function navHtml(activeSlug) {
+  let seenGroup = null
   const items = pages
-    .map((p) => `      <a class="nav-link${p.slug === activeSlug ? ' active' : ''}" href="${p.slug}.html">${p.nav}</a>`)
+    .map((p) => {
+      let prefix = ''
+      if (p.group && p.group !== seenGroup) {
+        seenGroup = p.group
+        prefix = `      <div class="nav-group">${p.group}</div>\n`
+      }
+      return `${prefix}      <a class="nav-link${p.slug === activeSlug ? ' active' : ''}" href="${p.slug}.html">${p.nav}</a>`
+    })
     .join('\n')
   return `    <a class="nav-link nav-home${activeSlug === 'index' ? ' active' : ''}" href="index.html">Home</a>\n${items}`
 }
@@ -111,13 +122,16 @@ ${contentHtml}
 }
 
 function homePage() {
+  let seen = null
   const cards = pages
-    .map(
-      (p) => `      <a class="card" href="${p.slug}.html">
+    .map((p) => {
+      let pre = ''
+      if (p.group && p.group !== seen) { seen = p.group; pre = `      <h2 class="card-group">${p.group}</h2>\n` }
+      return `${pre}      <a class="card" href="${p.slug}.html">
         <h3>${p.nav}</h3>
         <p>${esc(p.desc)}</p>
       </a>`
-    )
+    })
     .join('\n')
   const content = `    <p class="lede">Everything needed to run the Goomba XI FINAL FANTASY XI preservation server and its website &mdash; a Level&nbsp;75 era server built on LandSandBoat. This is an offline copy of the documentation; start with <a href="install.html">Install</a>.</p>
     <div class="cards">
