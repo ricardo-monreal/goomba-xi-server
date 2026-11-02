@@ -10,6 +10,7 @@
 #                                  packs/xiview-widescreen-<date>.zip     (16:9 / 16:10 UI)
 #   targetlines (Jyouya)         → addons/targetlines-<version>.zip      (Ashita addon)
 #   mobdb (ThornyFFXI)           → addons/mobdb-<version>.zip            (Ashita addon)
+#   XIUI (tirem)                 → addons/XIUI-<version>.zip             (Ashita addon, with submodules)
 #
 # then rebuilds launcher/pivot.json and launcher/addons.json with the launcher repository's
 # tools/make-catalogs.mjs and file-server/catalog-sources.json (names, descriptions, credits).
@@ -70,12 +71,15 @@ install -d -m 0755 "$SRC" "$FILES/packs" "$FILES/addons" "$FILES/packs/old" "$FI
 
 # fetch <owner/repo> → $SRC/<repo>, shallow, updated in place.
 fetch() {
-  local repo="$1" dir="$SRC/${1##*/}"
+  local repo="$1" subs="${2:-}" dir="$SRC/${1##*/}"
   if [[ -d "$dir/.git" ]]; then
     git -C "$dir" fetch -q --depth 1 origin HEAD
     git -C "$dir" reset -q --hard FETCH_HEAD
   else
-    git clone -q --depth 1 "https://github.com/$repo" "$dir"
+    git clone -q --depth 1 ${subs:+--recurse-submodules --shallow-submodules} "https://github.com/$repo" "$dir"
+  fi
+  if [[ -n "$subs" ]]; then
+    git -C "$dir" submodule update --init --recursive --depth 1 -q || warn "submodules for $repo were not fetched; $dir may be incomplete"
   fi
   echo "$dir"
 }
@@ -134,13 +138,25 @@ pack "$stage" "$FILES/addons" "mobdb-$ver.zip"
 rm -rf "$stage"
 MOBDB_VER="$ver"
 
+say "XIUI"
+xiui="$(fetch tirem/XIUI submodules)"
+ver="$(sed -n "s/^addon.version *= *'\([^']*\)'.*/\1/p" "$xiui/XIUI/XIUI.lua" | head -1)"
+ver="${ver:-$(commit_date "$xiui")}"
+# Only the repo's XIUI/ folder is the addon (not scripts/ or tools/); keep its xiui-icons submodule.
+stage="$(mktemp -d)"
+cp -r "$xiui/XIUI" "$stage/XIUI"
+find "$stage" -name .git -exec rm -rf {} + 2>/dev/null || true
+pack "$stage" "$FILES/addons" "XIUI-$ver.zip"
+rm -rf "$stage"
+XIUI_VER="$ver"
+
 say "Catalogs (pivot.json, addons.json)"
 launcher="$(fetch "${LAUNCHER_REPO#https://github.com/}")"
 # catalog-sources.json lists every pack and addon the launcher can offer; point the entries for
 # these three at the zips just built (versions are dates from their repositories).
-node - "$launcher/file-server/catalog-sources.json" "$SRC/catalog-sources.json" "$MAPS_VER" "$XIVIEW_VER" "$TL_VER" "$MOBDB_VER" <<'JS'
+node - "$launcher/file-server/catalog-sources.json" "$SRC/catalog-sources.json" "$MAPS_VER" "$XIVIEW_VER" "$TL_VER" "$MOBDB_VER" "$XIUI_VER" <<'JS'
 const fs = require('fs')
-const [src, out, maps, xiview, tl, mobdb] = process.argv.slice(2)
+const [src, out, maps, xiview, tl, mobdb, xiui] = process.argv.slice(2)
 const s = JSON.parse(fs.readFileSync(src, 'utf8'))
 const set = (list, id, version, file) => {
   const e = list.find((x) => (x.id ?? x.name) === id)
@@ -152,6 +168,7 @@ set(s.packs, 'xiview-standard', xiview, `packs/xiview-standard-${xiview}.zip`)
 set(s.packs, 'xiview-widescreen', xiview, `packs/xiview-widescreen-${xiview}.zip`)
 set(s.addons, 'TargetLines', tl, `addons/targetlines-${tl}.zip`)
 set(s.addons, 'MobDB', mobdb, `addons/mobdb-${mobdb}.zip`)
+set(s.addons, 'XIUI', xiui, `addons/XIUI-${xiui}.zip`)
 fs.writeFileSync(out, JSON.stringify(s, null, 2) + '\n')
 JS
 echo "  (other entries in catalog-sources.json without a zip here are reported as missing and left out; that is expected)"
@@ -160,4 +177,4 @@ echo "  (other entries in catalog-sources.json without a zip here are reported a
 chown -R "$OWNER:$OWNER" "$FILES/packs" "$FILES/addons" "$FILES/pivot.json" "$FILES/addons.json" 2>/dev/null || true
 
 printf '\n\e[1;32mDone.\e[0m Check: %s/launcher/pivot.json and %s/launcher/addons.json\n' "$BASE_URL" "$BASE_URL"
-echo "In the launcher: Addons → Pivot for the map and UI packs, Addons → Catalog for TargetLines and MobDB."
+echo "In the launcher: Addons → Pivot for the map and UI packs, Addons → Catalog for TargetLines, MobDB and XIUI."

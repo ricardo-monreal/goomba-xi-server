@@ -28,8 +28,6 @@
       <a class="nav-link" href="gm-commands.html">GM commands</a>
       <a class="nav-link" href="zone-ids.html">Zone IDs</a>
       <a class="nav-link" href="nm-ids.html">NM IDs</a>
-      <div class="nav-group">Beta</div>
-      <a class="nav-link" href="vana-client-beta.html">Modern client (beta)</a>
     <div class="nav-foot">Offline copy · <a href="https://github.com/ricardo-monreal/goomba-xi-server" target="_blank" rel="noopener noreferrer">source</a></div>
   </nav>
   <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
@@ -97,7 +95,7 @@
 rsync -av publish/manifest.json goomba-admin@10.2.5.65:/srv/goomba/files/launcher/client/
 </code></pre>
 <p>On Windows without rsync, <code>scp -r</code> works the same way (or WinSCP).</p>
-<h2 id="community-packs-and-addons-maps-xi-view-targetlines-mobdb">Community packs and addons (maps, XI View, TargetLines, MobDB)</h2>
+<h2 id="community-packs-and-addons-maps-xi-view-targetlines-mobdb-xiui">Community packs and addons (maps, XI View, TargetLines, MobDB, XIUI)</h2>
 <p>The launcher&#39;s <strong>Addons</strong> screen offers optional extras from the file server: <strong>Pivot</strong> packs that replace game graphics without touching game files (each category is pick-one), and <strong>Catalog</strong> addons from the approved list. One script builds these community ones straight from their GitHub repositories and publishes the catalogs:</p>
 <table>
 <thead>
@@ -137,6 +135,11 @@ rsync -av publish/manifest.json goomba-admin@10.2.5.65:/srv/goomba/files/launche
 <td><a href="https://github.com/ThornyFFXI/mobdb" target="_blank" rel="noopener noreferrer">ThornyFFXI/mobdb</a></td>
 <td>Catalog → <strong>MobDB</strong></td>
 </tr>
+<tr>
+<td>XIUI addon</td>
+<td><a href="https://github.com/tirem/XIUI" target="_blank" rel="noopener noreferrer">tirem/XIUI</a> (with its icon submodule)</td>
+<td>Catalog → <strong>XIUI</strong></td>
+</tr>
 </tbody></table>
 <p><strong>Where: the file server (10.2.5.65), as root</strong> — in the LXC&#39;s console in Proxmox, or <code>pct enter &lt;id&gt;</code> on the Proxmox host. Not on the game server: there the script stops with &quot;This is the game server&quot;.</p>
 <pre><code class="language-bash">cd /opt/goomba-xi-server &amp;&amp; git pull
@@ -150,6 +153,7 @@ bash tools/community-packs.sh --base-url http://10.2.5.65
   packs/xiview-widescreen-&lt;date&gt;.zip       ~3 MB
   addons/targetlines-&lt;version&gt;.zip
   addons/mobdb-&lt;version&gt;.zip
+  addons/XIUI-&lt;version&gt;.zip
   pivot.json, addons.json                  the catalogs the launcher reads
 </code></pre>
 <p>Check <code>http://10.2.5.65/launcher/pivot.json</code> in a browser. Launchers see the new entries the next time the Addons screen opens; nothing needs rebuilding.</p>

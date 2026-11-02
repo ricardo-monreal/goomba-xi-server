@@ -59,7 +59,7 @@ rsync -av publish/manifest.json goomba-admin@10.2.5.65:/srv/goomba/files/launche
 
 On Windows without rsync, `scp -r` works the same way (or WinSCP).
 
-## Community packs and addons (maps, XI View, TargetLines, MobDB)
+## Community packs and addons (maps, XI View, TargetLines, MobDB, XIUI)
 
 The launcher's **Addons** screen offers optional extras from the file server: **Pivot** packs that replace game graphics without touching game files (each category is pick-one), and **Catalog** addons from the approved list. One script builds these community ones straight from their GitHub repositories and publishes the catalogs:
 
@@ -71,6 +71,7 @@ The launcher's **Addons** screen offers optional extras from the file server: **
 | XI View UI, widescreen | same | Pivot → UI → **XI View: Widescreen** |
 | TargetLines addon | [Jyouya/targetlines](https://github.com/Jyouya/targetlines) | Catalog → **TargetLines** |
 | MobDB addon | [ThornyFFXI/mobdb](https://github.com/ThornyFFXI/mobdb) | Catalog → **MobDB** |
+| XIUI addon | [tirem/XIUI](https://github.com/tirem/XIUI) (with its icon submodule) | Catalog → **XIUI** |
 
 **Where: the file server (10.2.5.65), as root** — in the LXC's console in Proxmox, or `pct enter <id>` on the Proxmox host. Not on the game server: there the script stops with "This is the game server".
 
@@ -89,6 +90,7 @@ The first run downloads about 2.3 GB (the maps) and takes a while to zip them; i
   packs/xiview-widescreen-<date>.zip       ~3 MB
   addons/targetlines-<version>.zip
   addons/mobdb-<version>.zip
+  addons/XIUI-<version>.zip
   pivot.json, addons.json                  the catalogs the launcher reads
 ```
 
