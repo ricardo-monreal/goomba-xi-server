@@ -30,7 +30,8 @@ const pages = [
   { slug: 'without-github', file: 'without-github.md', nav: 'Without GitHub', desc: 'Install, update and build entirely from your own machines.' },
   { slug: 'gm-commands', file: 'gm-commands.md', nav: 'GM commands', desc: 'Every in-game ! command and the GM level it needs.', group: 'Reference' },
   { slug: 'zone-ids', file: 'zone-ids.md', nav: 'Zone IDs', desc: 'Every zone and its ID.', group: 'Reference' },
-  { slug: 'nm-ids', file: 'nm-ids.md', nav: 'NM IDs', desc: 'Every notorious monster and its mob ID.', group: 'Reference' }
+  { slug: 'nm-ids', file: 'nm-ids.md', nav: 'NM IDs', desc: 'Every notorious monster and its mob ID.', group: 'Reference' },
+  { slug: 'vana-client-beta', file: 'vana-client-beta.md', nav: 'Modern client (beta)', desc: 'Try vana-client, a native modern-UI client, against this server.', group: 'Beta' }
 ]
 
 const fileToSlug = new Map(pages.map((p) => [p.file, p.slug]))

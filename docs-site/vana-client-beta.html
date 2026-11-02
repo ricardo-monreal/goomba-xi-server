@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modern client (beta) · Goomba XI docs</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" hidden>
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-label="Menu"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◆</span> Goomba XI <small>docs</small></a>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <a class="nav-link nav-home" href="index.html">Home</a>
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link" href="features.html">Gameplay features</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link" href="updating.html">Updating</a>
+      <a class="nav-link" href="file-server.html">File server</a>
+      <a class="nav-link" href="client-and-launcher.html">Client & launcher</a>
+      <a class="nav-link" href="auction-house.html">Auction House</a>
+      <a class="nav-link" href="moving-to-vps.html">Moving to a VPS</a>
+      <a class="nav-link" href="without-github.html">Without GitHub</a>
+      <div class="nav-group">Reference</div>
+      <a class="nav-link" href="gm-commands.html">GM commands</a>
+      <a class="nav-link" href="zone-ids.html">Zone IDs</a>
+      <a class="nav-link" href="nm-ids.html">NM IDs</a>
+      <div class="nav-group">Beta</div>
+      <a class="nav-link active" href="vana-client-beta.html">Modern client (beta)</a>
+    <div class="nav-foot">Offline copy · <a href="https://github.com/ricardo-monreal/goomba-xi-server" target="_blank" rel="noopener noreferrer">source</a></div>
+  </nav>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+  <main class="content">
+    <article>
+      <h1 class="page-title">Modern client (beta)</h1>
+<blockquote>
+<p><strong>Beta, opt-in, experimental.</strong> This is a separate client you can try against Goomba XI to see a modern interface. The supported way to play is still the <strong>launcher</strong> (Ashita + xiloader) in <a href="client-and-launcher.html">client-and-launcher.md</a>. Nothing here changes your server, and you can stop using it at any time.</p>
+</blockquote>
+<p><a href="https://github.com/lenonk/vana-client" target="_blank" rel="noopener noreferrer"><strong>vana-client</strong></a> (by lenonk, MIT) is a native FINAL FANTASY XI client written in Rust. It runs without Wine or PlayOnline — it reads the game&#39;s data files and talks to a LandSandBoat server directly. It has two interfaces, switchable any time in <strong>Config &gt; Settings &gt; Client &gt; Interface</strong>:</p>
+<ul>
+<li><strong>Classic</strong> — the retail client&#39;s windows, drawn as the original draws them.</li>
+<li><strong>Modern</strong> — a new interface over the same game: movable windows, a minimap, tabbed chat, tooltips and mouse support everywhere. See <a href="https://github.com/lenonk/vana-client/blob/main/docs/modern-ui.md" target="_blank" rel="noopener noreferrer">its modern-UI notes</a> and <a href="https://github.com/lenonk/vana-client/tree/main/docs/screenshots" target="_blank" rel="noopener noreferrer">screenshots</a>.</li>
+</ul>
+<p>It works with Goomba XI as-is: the ports (54231 / 54230 / 54001) and client version (<code>30261006_0</code>) it expects already match the server, and it signs in with your normal Goomba account. <strong>No server change is required.</strong></p>
+<h2 id="requirements">Requirements</h2>
+<ul>
+<li><strong>Linux</strong> or <strong>Windows</strong> (64-bit). macOS is not available yet.</li>
+<li>A <strong>Vulkan-capable GPU</strong>. On Linux, PipeWire or PulseAudio for sound.</li>
+<li>The <strong>game data</strong> from Square Enix&#39;s official installer (<code>FFXIFullSetup_US.part1.exe</code> and its parts), or an existing FFXI install to point at. No game data ships with vana-client or Goomba XI.</li>
+<li>A <strong>Goomba XI account</strong> — create it on the website as usual; the client&#39;s own account creation is turned off on this server.</li>
+</ul>
+<h2 id="try-it-on-linux-or-the-steam-deck">Try it on Linux or the Steam Deck</h2>
+<p>From this repository, run the helper with your server&#39;s address (the game server&#39;s LAN IP, or your domain / VPS):</p>
+<pre><code class="language-bash">bash tools/vana-beta.sh --server 10.2.5.64
+</code></pre>
+<p>It downloads the vana-client binary to <code>~/.local/bin/vana-client</code> and writes <code>~/.config/vana-client/config.json</code> pointed at your server. Then, once:</p>
+<pre><code class="language-bash">~/.local/bin/vana-client install /path/to/FFXIFullSetup_US.part1.exe   # or point game_dir at an FFXI install
+~/.local/bin/vana-client update                                        # bring the data to current retail
+</code></pre>
+<p>And to play:</p>
+<pre><code class="language-bash">~/.local/bin/vana-client play
+</code></pre>
+<p>Log in with your Goomba username and password.</p>
+<h2 id="try-it-on-windows">Try it on Windows</h2>
+<ol>
+<li><p>Download <code>vana-client-windows-x86_64.exe</code> from the <a href="https://github.com/lenonk/vana-client/releases" target="_blank" rel="noopener noreferrer">releases page</a> and put it in a folder of its own.</p>
+</li>
+<li><p>Run it once so it creates its config, or create <code>%USERPROFILE%\.config\vana-client\config.json</code> with:</p>
+<pre><code class="language-json">{
+  &quot;server&quot;: &quot;10.2.5.64&quot;,
+  &quot;client_version&quot;: &quot;30261006_0&quot;
+}
+</code></pre>
+<p>(use your server&#39;s address). Ports default to Goomba&#39;s, so they don&#39;t need setting.</p>
+</li>
+<li><p>Add the game data (<code>vana-client.exe install &lt;FFXIFullSetup_US.part1.exe&gt;</code>, then <code>vana-client.exe update</code>), or point <code>game_dir</code> at an existing install.</p>
+</li>
+<li><p><code>vana-client.exe play</code>, and log in with your Goomba account.</p>
+</li>
+</ol>
+<h2 id="settings-you-may-need">Settings you may need</h2>
+<p>In <code>config.json</code> (most other options are in the in-game Config menus):</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>server</code></td>
+<td><code>127.0.0.1</code></td>
+<td><strong>Set this</strong> to your Goomba XI server address.</td>
+</tr>
+<tr>
+<td><code>auth_port</code>, <code>data_port</code>, <code>view_port</code></td>
+<td><code>54231</code>, <code>54230</code>, <code>54001</code></td>
+<td>Already match Goomba; leave them.</td>
+</tr>
+<tr>
+<td><code>client_version</code></td>
+<td><code>30261006_0</code></td>
+<td>Matches Goomba&#39;s <code>CLIENT_VER</code>; leave it.</td>
+</tr>
+<tr>
+<td><code>game_dir</code></td>
+<td><code>~/.local/share/vana-client/game</code></td>
+<td>Folder holding <code>FINAL FANTASY XI</code>; set it to reuse an install.</td>
+</tr>
+<tr>
+<td><code>frame_limit</code></td>
+<td><code>300</code></td>
+<td>Frame cap in fps (<code>0</code> = unlimited).</td>
+</tr>
+</tbody></table>
+<h2 id="known-limits-of-the-beta">Known limits of the beta</h2>
+<ul>
+<li><strong>Era data.</strong> vana-client reads retail game data, not Goomba&#39;s Era-DATs (which the launcher overlays with XIPivot). Some item names, prices and menus will look like <strong>current retail</strong>, not the 75-era client. The interface itself is what this beta is for.</li>
+<li><strong>Unfinished in vana-client:</strong> no gamepad support yet, a few event mini-games, and no macOS build.</li>
+<li>It is a young project under active development; treat it as a preview, not a replacement for the launcher.</li>
+</ul>
+<h2 id="credit-and-license">Credit and license</h2>
+<p><a href="https://github.com/lenonk/vana-client" target="_blank" rel="noopener noreferrer">vana-client</a> is by lenonk, released under the MIT License. It is an unofficial fan project and is not affiliated with, endorsed by or supported by Square Enix. FINAL FANTASY is a registered trademark of Square Enix Holdings Co., Ltd. No game data is included.</p>
+
+    </article>
+  </main>
+</div>
+</body>
+</html>
