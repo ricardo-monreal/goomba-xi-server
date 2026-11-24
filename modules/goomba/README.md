@@ -22,6 +22,17 @@ Markets and Windurst Woods gives any citizen their nation's ring, whatever their
 defeating 10 monsters that give experience in each of the two areas outside the city. LandSandBoat's own modules
 (`/opt/goomba/server/modules/custom`, `era`, `example`) are good references.
 
+`lua/crowds.lua` is the **living world**: player-looking NPCs (`zone:insertDynamicEntity`) that fill
+every era town and the 17 conquest outposts — resting at Home Points, browsing the Auction House,
+loitering at shops and emoting. `lua/crowds_field.lua` adds field parties: adventurer camps outside
+town that pull, tank, heal, refresh and close skillchains like a real 75-era exp party (they are
+mobs on your side, like Garrison soldiers, with a player look). `lua/crowds_chat.lua` +
+`lua/crowds_chat_data.lua` are their canned shout/say chatter. Settings are in `lua/crowds_config.lua`
+and the in-game `!crowd` / `!crowd field` commands. The spot and gear data in `lua/crowds_data.lua`
+is generated from this server's own tables, item data and navmeshes by `tools/crowds/gen-crowds-data.sh`
+(re-run after a `goomba update`). Ported from [xi-forever-offline](https://github.com/Hurami89/xi-forever-offline)
+(Hurami89, GPL v3); the bot-players half of its living world (which needs a custom C++ module) is not included.
+
 `sql/accounts_login_tokens.sql` is the table behind the launcher's sign-in (see `patches/` at the
 top of this repository); leave it in place.
 

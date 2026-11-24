@@ -31,6 +31,16 @@ In `modules/goomba/lua/solo_trusts.lua` and `trust_shop.lua`:
 - Trusts whose main job is Geomancer, Rune Fencer, Dancer or Scholar are blocked — those jobs postdate the 75 era (`blockedTrusts`). A blocked trust can't be cast even if it is learned some other way.
 - The **Trust Liaison** in Lower Jeuno sells the other 102 trusts for conquest points, in tiers that open when any of your jobs reaches level 20, 30, 40, 50, 60, 70 and 75.
 
+## Living world
+
+Towns and the field feel populated (`modules/goomba/lua/crowds.lua` and friends):
+
+- **Ambient crowds:** player-looking adventurers fill every era town and the 17 conquest outposts — resting at Home Points, browsing the Auction House, loitering at shops, walking between them and emoting. Purely visual.
+- **Field parties:** adventurer camps outside town that play like a real 75-era exp party — a puller pulls, a tank holds hate, a WHM cures, a RDM/BRD refreshes and debuffs, damage dealers build TP and close skillchains, the BLM magic-bursts, and they rest between pulls (and can wipe). They never take a monster near a player.
+- **Chatter:** the crowd shouts and makes small talk (canned lines). Local AI chat (Ollama) is off on this server.
+
+Defaults are in `modules/goomba/lua/crowds_config.lua` (crowd size, field parties on/off, disabled zones); in game, `!crowd` and `!crowd field` adjust them for the current run. The data in `crowds_data.lua` is generated from this server's own files by `tools/crowds/gen-crowds-data.sh` — re-run it after a `goomba update`. Ported from [xi-forever-offline](https://github.com/Hurami89/xi-forever-offline) (GPL v3); its autonomous bot-players (a custom C++ module) are not included.
+
 ## Quests
 
 - **A Small `<nation>` Challenge** (`modules/goomba/lua/nation_ring_quest.lua`), for example *A Small Bastok Challenge*: an envoy beside the gate guard in Southern San d'Oria, Bastok Markets and Windurst Woods gives any citizen their nation's ring, whatever their race, for defeating 10 experience-giving monsters in each of the two areas outside the city.

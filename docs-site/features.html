@@ -98,6 +98,14 @@
 <li>Trusts whose main job is Geomancer, Rune Fencer, Dancer or Scholar are blocked — those jobs postdate the 75 era (<code>blockedTrusts</code>). A blocked trust can&#39;t be cast even if it is learned some other way.</li>
 <li>The <strong>Trust Liaison</strong> in Lower Jeuno sells the other 102 trusts for conquest points, in tiers that open when any of your jobs reaches level 20, 30, 40, 50, 60, 70 and 75.</li>
 </ul>
+<h2 id="living-world">Living world</h2>
+<p>Towns and the field feel populated (<code>modules/goomba/lua/crowds.lua</code> and friends):</p>
+<ul>
+<li><strong>Ambient crowds:</strong> player-looking adventurers fill every era town and the 17 conquest outposts — resting at Home Points, browsing the Auction House, loitering at shops, walking between them and emoting. Purely visual.</li>
+<li><strong>Field parties:</strong> adventurer camps outside town that play like a real 75-era exp party — a puller pulls, a tank holds hate, a WHM cures, a RDM/BRD refreshes and debuffs, damage dealers build TP and close skillchains, the BLM magic-bursts, and they rest between pulls (and can wipe). They never take a monster near a player.</li>
+<li><strong>Chatter:</strong> the crowd shouts and makes small talk (canned lines). Local AI chat (Ollama) is off on this server.</li>
+</ul>
+<p>Defaults are in <code>modules/goomba/lua/crowds_config.lua</code> (crowd size, field parties on/off, disabled zones); in game, <code>!crowd</code> and <code>!crowd field</code> adjust them for the current run. The data in <code>crowds_data.lua</code> is generated from this server&#39;s own files by <code>tools/crowds/gen-crowds-data.sh</code> — re-run it after a <code>goomba update</code>. Ported from <a href="https://github.com/Hurami89/xi-forever-offline" target="_blank" rel="noopener noreferrer">xi-forever-offline</a> (GPL v3); its autonomous bot-players (a custom C++ module) are not included.</p>
 <h2 id="quests">Quests</h2>
 <ul>
 <li><strong>A Small <code>&lt;nation&gt;</code> Challenge</strong> (<code>modules/goomba/lua/nation_ring_quest.lua</code>), for example <em>A Small Bastok Challenge</em>: an envoy beside the gate guard in Southern San d&#39;Oria, Bastok Markets and Windurst Woods gives any citizen their nation&#39;s ring, whatever their race, for defeating 10 experience-giving monsters in each of the two areas outside the city.</li>

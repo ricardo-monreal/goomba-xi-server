@@ -136,6 +136,6 @@ Goomba XI can be installed, updated and built entirely from your own machines: a
 
 ## Credits and license
 
-Built on [LandSandBoat](https://github.com/LandSandBoat/server). The launch-token sign-in, Era-DATs and xiloader come from the [Phoenix](https://github.com/phoenixffxi) project. Based on the Bahamut XI server scripts.
+Built on [LandSandBoat](https://github.com/LandSandBoat/server). The launch-token sign-in, Era-DATs and xiloader come from the [Phoenix](https://github.com/phoenixffxi) project. Based on the Bahamut XI server scripts. The living-world modules (`modules/goomba/lua/crowds*`) and their data generator (`tools/crowds/`) are ported from [xi-forever-offline](https://github.com/Hurami89/xi-forever-offline) by Hurami89 (GPL v3).
 
 The scripts and settings in this repository are released under the GNU GPL v3, the same license as LandSandBoat. FINAL FANTASY XI is a registered trademark of Square Enix Holdings Co., Ltd.; Goomba XI is not affiliated with or endorsed by Square Enix.
