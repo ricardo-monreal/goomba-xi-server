@@ -18,6 +18,7 @@
 #   sudo bin/goomba ahbot on|off|refresh|clear|status   Auction House bot (stocks and buys for solo play)
 #   sudo bin/goomba web-items      Import item names and icons for the website (from Era-DATs)
 #   sudo bin/goomba docs           Rebuild the offline docs site and reference lists from this server
+#   sudo bin/goomba crowds [field] on|off   Living world: ambient crowds / field parties on or off
 #        bin/goomba version        Goomba XI, LandSandBoat and website versions
 #
 # Configuration: /etc/goomba/goomba.conf (from config/goomba.conf.example).
@@ -1001,6 +1002,39 @@ cmd_docs() {
   ok "docs rebuilt: $(site_url)/docs/  (or open $REPO_DIR/docs-site/index.html)"
 }
 
+# Turn the living world (ambient crowds, field parties) on or off server-wide. Edits this repo's
+# modules/goomba/lua/crowds_config.lua, re-applies it and restarts the game. In game, !crowd and
+# !crowd field toggle it for the current run only; this persists.
+cmd_crowds() {
+  local conf="$REPO_DIR/modules/goomba/lua/crowds_config.lua"
+  [[ -f "$conf" ]] || die "crowds_config.lua not found (is the living-world module present?)"
+  local key="enabled" label="Ambient crowds"
+  if [[ "${1:-}" == "field" ]]; then key="field"; label="Field parties"; shift; fi
+  local arg="${1:-}"
+  if [[ -z "$arg" ]]; then
+    local e f
+    e="$(sed -n 's/^[[:space:]]*enabled[[:space:]]*=[[:space:]]*\(true\|false\).*/\1/p' "$conf" | head -1)"
+    f="$(sed -n 's/^[[:space:]]*field[[:space:]]*=[[:space:]]*\(true\|false\).*/\1/p' "$conf" | head -1)"
+    printf 'Ambient crowds: %s\nField parties:  %s\n' "${e:-unknown}" "${f:-unknown}"
+    echo 'Change: sudo goomba crowds on|off   (field parties: sudo goomba crowds field on|off)'
+    return 0
+  fi
+  local val
+  case "$arg" in
+    on|true|enable)   val=true ;;
+    off|false|disable) val=false ;;
+    *) die "use: sudo goomba crowds [field] on|off" ;;
+  esac
+  need_root crowds
+  load_conf
+  perl -0pi -e "s/(^\\s*${key}\\s*=\\s*)(?:true|false)/\${1}${val}/m" "$conf"
+  apply_overlay
+  local units; read -ra units <<<"$(units_for game)"
+  systemctl reset-failed "${units[@]}" 2>/dev/null || true
+  systemctl restart "${units[@]}"
+  ok "$label: $val (applied, game restarted). Commit crowds_config.lua to keep it across updates."
+}
+
 main() {
   local cmd="${1:-help}"; shift || true
   case "$cmd" in
@@ -1021,8 +1055,9 @@ main() {
     ahbot) cmd_ahbot "$@" ;;
     web-items) need_root web-items; load_conf; web_items ;;
     docs) need_root docs; load_conf; cmd_docs ;;
+    crowds) cmd_crowds "$@" ;;
     version|--version) cmd_version ;;
-    help|-h|--help) sed -n '2,23p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
+    help|-h|--help) sed -n '2,24p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
     *) die "unknown command '$cmd' (see: goomba help)" ;;
   esac
 }
